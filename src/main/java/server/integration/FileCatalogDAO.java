@@ -54,7 +54,7 @@ public class FileCatalogDAO {
 		try {
 			EntityManager em = beginTransaction();
 			try {
-				return em.createNamedQuery("findFileByFileName", File.class).setParameter("name", fileName)
+				return em.createNamedQuery("findFileByFileName", File.class).setParameter("fileName", fileName)
 						.getSingleResult();
 			} catch (NoResultException noSuchUser) {
 				return null;

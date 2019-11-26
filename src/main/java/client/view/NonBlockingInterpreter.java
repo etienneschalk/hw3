@@ -142,8 +142,12 @@ public class NonBlockingInterpreter implements Runnable {
 	private void printDetails(FileDTO file) {
 //		safePrintln(file.getName() + " - " + file.getPermission() + " - " + file.getOwnerName() + " - "
 //				+ file.getSize().toString());
-		safePrintln(file.getName() + "|" + file.getPermission() + "|" + file.getSize().toString() + " - "
-				+ file.getOwnerName());
+		if (file == null) {
+			safePrintln("The file could not be retrieved or does not exist!");
+		} else {
+			safePrintln(file.getName() + "|" + file.getPermission() + "|" + file.getSize().toString() + " - "
+					+ file.getOwnerName());
+		}
 	}
 
 }

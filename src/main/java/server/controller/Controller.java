@@ -4,6 +4,8 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.List;
 
+import javax.persistence.EntityManager;
+
 import common.FileCatalog;
 import common.FileDTO;
 import server.integration.FileCatalogDAO;
@@ -25,13 +27,12 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	private static final long serialVersionUID = -2027287211344704385L;
 	private FileCatalogDAO fc;
 	private AuthenticationService authenticationService;
-	private User loggedInUser;
+	private final ThreadLocal<User> threadLocalLoggedInUser = new ThreadLocal<>();
 
 	public Controller() throws RemoteException {
 		super();
 		fc = new FileCatalogDAO();
 		authenticationService = new AuthenticationServiceImpl();
-		loggedInUser = null;
 	}
 
 	@Override
@@ -57,7 +58,7 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 				if (jwtString == null) {
 					throw new UserException("Unexpected error during authentication.");
 				}
-				loggedInUser = user;	// We remember the information about the successfully logged in user
+				threadLocalLoggedInUser.set(user);	// We remember the information about the successfully logged in user
 				return jwtString;
 			}
 		} else {
@@ -81,6 +82,7 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 		try {
 			return fc.findFileByFileName(fileName, true);
 		} catch (Exception e) {
+			e.printStackTrace();
 			throw new FileException("Could not retrieve the details of the file " + fileName + ".");
 		}
 	}
@@ -138,7 +140,7 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	 * @param writePermission
 	 */
 	private void createFileMetaData(String newName, int size, String url, boolean writePermission) {
-		fc.createFile(new File(newName, size, url, writePermission, loggedInUser));
+		fc.createFile(new File(newName, size, url, writePermission, threadLocalLoggedInUser.get()));
 	}
 
 	/**
