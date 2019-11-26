@@ -15,22 +15,16 @@ public interface FileCatalog extends Remote {
 
 	public void register(String username, String password) throws RemoteException, UserException;
 
-	public void login(String username, String password) throws RemoteException, UserException;
+	public String login(String username, String password) throws RemoteException, UserException;
 
-	public List<? extends FileDTO> list() throws RemoteException, FileException;
+	public List<? extends FileDTO> list(String jwtToken) throws RemoteException, FileException, UserException;
 
-	public FileDTO details(String fileName) throws RemoteException, FileException;
+	public FileDTO details(String jwtToken, String fileName) throws RemoteException, FileException, UserException;
 
-	public void upload(String location) throws RemoteException, FileException, UserException;
+	public void upload(String jwtToken, String newName, boolean writePermission) throws RemoteException, FileException, UserException;
 
-	public void upload(String location, String newName) throws RemoteException, FileException, UserException;
+	public FileDTO download(String jwtToken, String fileName, String targetDirectory, String newName) throws RemoteException, FileException, UserException;
 
-	public void download(String fileName) throws RemoteException, FileException;
-
-	public void download(String fileName, String targetDirectory) throws RemoteException, FileException;
-
-	public void download(String fileName, String targetDirectory, String newName) throws RemoteException, FileException;
-
-	public void delete(String fileName) throws RemoteException, FileException, UserException;
+	public void delete(String jwtToken, String fileName) throws RemoteException, FileException, UserException;
 
 }

@@ -16,9 +16,12 @@
 			<property name="javax.persistence.jdbc.driver"
 				value="com.mysql.cj.jdbc.Driver" />
 			<property name="javax.persistence.jdbc.password" value="" />
+<!-- 			<property -->
+<!-- 				name="javax.persistence.schema-generation.database.action" -->
+<!-- 				value="drop-and-create" /> -->
 			<property
 				name="javax.persistence.schema-generation.database.action"
-				value="drop-and-create" />
+				value="create" /> 
 			<property name="eclipselink.logging.level" value="FINE" />
 		</properties>
 	</persistence-unit>

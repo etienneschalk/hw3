@@ -18,8 +18,10 @@ import server.model.FileException;
 public class NonBlockingInterpreter implements Runnable {
 	private static final String PROMPT = "> ";
 	private static final Scanner console = new Scanner(System.in);
-	private FileCatalog fileCatalog;
 	private boolean receivingCommands = false;
+
+	private FileCatalog fileCatalog;
+	private String jwtToken;
 
 	/**
 	 * Starts the interpreter, if not starting yet.
@@ -30,6 +32,7 @@ public class NonBlockingInterpreter implements Runnable {
 		this.fileCatalog = fileCatalog;
 		if (receivingCommands)
 			return;
+		jwtToken = null;
 		receivingCommands = true;
 		new Thread(this).start();
 	}
@@ -51,34 +54,50 @@ public class NonBlockingInterpreter implements Runnable {
 				case LOGIN:
 					String username1 = commandHandler.getParam(1);
 					String password1 = commandHandler.getParam(2);
-					fileCatalog.login(username1, password1);
+					jwtToken = fileCatalog.login(username1, password1);
 					break;
 				case LIST:
-					List<? extends FileDTO> files = fileCatalog.list();
+					List<? extends FileDTO> files = fileCatalog.list(jwtToken);
 					for (FileDTO file : files) {
-						safePrintln(file.getName() + " - " + file.getPermission() + " - "
-								+ file.getOwnerName() + " - " + file.getSize().toString());
+						printDetails(file);
 					}
 					break;
 				case DETAILS:
 					String fileName = commandHandler.getParam(1);
-					fileCatalog.details(fileName);
+					FileDTO file = fileCatalog.details(jwtToken, fileName);
+					printDetails(file);
 					break;
-				case UPLOAD:
-					String path = commandHandler.getParam(1);
+				case UPR:
+					String pathFileToUploadReadOnly = commandHandler.getParam(1);
+					String newFileNameOnServerReadOnly = commandHandler.getParam(2);
+					fileCatalog.upload(jwtToken, newFileNameOnServerReadOnly, false);
 					// TODO
 					break;
-				case DOWNLOAD:
-					String fileName1 = commandHandler.getParam(1);
+				case UPW:
+					String pathFileToUpload = commandHandler.getParam(1);
+					String newFileNameOnServer = commandHandler.getParam(2);
+					fileCatalog.upload(jwtToken, newFileNameOnServer, true);
+					// TODO
+					break;
+				case DOWN:
+					String fileNameToDL = commandHandler.getParam(1);
 					String targetDirectory = commandHandler.getParam(2);
+					String newNameDL = commandHandler.getParam(3);
+					fileCatalog.download(jwtToken, fileNameToDL, targetDirectory, newNameDL);
 					// TODO
 					break;
 				case DELETE:
-					String fileName11 = commandHandler.getParam(1);
+					String fileNameToDelete = commandHandler.getParam(1);
+					fileCatalog.delete(jwtToken, fileNameToDelete);
 					// TODO
+					break;
+				case LOGOUT:
+					jwtToken = null;
+					safePrintln("You have been logged out.");
 					break;
 				case QUIT:
 					receivingCommands = false;
+					safePrintln("Good bye!");
 					break;
 				case HELP:
 					for (Command command : Command.values()) {
@@ -93,7 +112,7 @@ public class NonBlockingInterpreter implements Runnable {
 				}
 			} catch (Exception e) {
 				niceErrorPrint(e);
-			} 
+			}
 		}
 	}
 
@@ -107,17 +126,24 @@ public class NonBlockingInterpreter implements Runnable {
 			System.out.println(s);
 		}
 	}
-	
+
 	private void safePrint(String s) {
 		synchronized (System.out) {
 			System.out.print(s);
 		}
 	}
-	
+
 	private void niceErrorPrint(Exception e) {
 		safePrintln("[" + e.getClass().getName() + "]");
 		safePrintln("\tMessage: " + e.getMessage());
 		safePrintln("\tCause: " + e.getCause());
+	}
+
+	private void printDetails(FileDTO file) {
+//		safePrintln(file.getName() + " - " + file.getPermission() + " - " + file.getOwnerName() + " - "
+//				+ file.getSize().toString());
+		safePrintln(file.getName() + "|" + file.getPermission() + "|" + file.getSize().toString() + " - "
+				+ file.getOwnerName());
 	}
 
 }

@@ -34,24 +34,38 @@ public enum Command {
 	DETAILS,
 	
 	/**
-	 * Uploading a file to the catalog
+	 * Uploading a file to the catalog WITH READ ONLY
 	 * Examples: 
 	 * - upload /my/path/to/file.txt
 	 * - upload /my/path/to/file.txt new_name.txt
 	 */
-	UPLOAD,
+	UPR,
+	
+	/**
+	 * Uploading a file to the catalog WITH WRITE PERMISSION
+	 * Examples: 
+	 * - upload /my/path/to/file.txt
+	 * - upload /my/path/to/file.txt new_name.txt
+	 */
+	UPW,
 	
 	/**
 	 * Downloading a file from the catalog, if available. The user specifies the target folder.
 	 * Example: download file.txt C:\Users\etis3\Downloads
 	 */
-	DOWNLOAD,
+	DOWN,
 	
 	/**
 	 * Delete a file
 	 * Example: delete file.txt
 	 */
 	DELETE,
+	
+	/**
+	 * Logout and erases jwt token
+	 * Example: logout
+	 */
+	LOGOUT,
 	
 	/**
 	 * Quit the session

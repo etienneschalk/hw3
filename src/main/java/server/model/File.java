@@ -8,6 +8,7 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.LockModeType;
+import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToOne;
@@ -41,7 +42,7 @@ public class File implements FileDTO {
 	@Column(name = "writePermission", nullable = false)
 	private boolean writePermission;
 
-	@OneToOne(cascade = CascadeType.ALL)
+	@ManyToOne
 	@JoinColumn(name = "owner", nullable = false)
 	private User owner;
 
@@ -50,14 +51,14 @@ public class File implements FileDTO {
 	private int version;
 
 	public File() {
-		this(null, 0, null, false);
 	}
 
-	public File(String name, int size, String url, boolean writePermission) {
+	public File(String name, int size, String url, boolean writePermission, User owner) {
 		this.name = name;
 		this.size = size;
 		this.url = url;
 		this.writePermission = writePermission;
+		this.owner = owner;
 	}
 
 	// FileDTO interface implementation

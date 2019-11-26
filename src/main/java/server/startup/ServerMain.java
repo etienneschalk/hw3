@@ -11,7 +11,7 @@ import server.controller.Controller;
 
 public class ServerMain {
 	public static final String fileCatalogName = FileCatalog.FILE_CATALOG_NAME_IN_REGISTRY;
-	public static final String TAG = "[" + ServerMain.class.getSimpleName() + "] ";
+	public static final String TAG = ServerMain.class.getSimpleName();
 	private static final String ERROR_MESSAGE = " Could not start file catalog server.";
 
 	/*
@@ -24,14 +24,9 @@ public class ServerMain {
 			ServerMain server = new ServerMain();
 			server.startRMIServant();
 			System.out.println("File Catalog server started");
-		} catch (MalformedURLException e) {
-			System.err.println("MalformedURLException");
-			System.err.println(TAG + e.getClass().getName() + ERROR_MESSAGE);
-		} catch (RemoteException e) {
-			System.err.println("RemoteException");
-			System.out.println(TAG + e.getClass().getName() + ERROR_MESSAGE);
-			e.printStackTrace();
-		}
+		} catch (Exception e) {
+			niceErrorPrint(e);
+		} 
 	}
 
 	private void startRMIServant() throws RemoteException, MalformedURLException {
@@ -42,5 +37,15 @@ public class ServerMain {
 		}
 		Naming.rebind(fileCatalogName, new Controller());
 	}
+	
+	
+	private static void niceErrorPrint(Exception e) {
+		System.err.println(ERROR_MESSAGE);
+		System.err.println("[" + TAG + "]");
+		System.err.println("[" + e.getClass().getName() + "]");
+		System.err.println("\tMessage: " + e.getMessage());
+		System.err.println("\tCause: " + e.getCause());
+	}
+
 
 }
