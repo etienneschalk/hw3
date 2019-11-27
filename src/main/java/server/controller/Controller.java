@@ -28,11 +28,13 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	private FileCatalogDAO fc;
 	private AuthenticationService authenticationService;
 	private final ThreadLocal<User> threadLocalLoggedInUser = new ThreadLocal<>();
+	private final ThreadLocal<Boolean> notificationPresent = new ThreadLocal<>();
 
 	public Controller() throws RemoteException {
 		super();
 		fc = new FileCatalogDAO();
 		authenticationService = new AuthenticationServiceImpl();
+		notificationPresent.set(false);
 	}
 
 	@Override
@@ -92,6 +94,8 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 		// TODO Auto-generated method stub
 		requireAuthentication(jwtToken);
 		fakeUpload(newName, writePermission); // Just insert fake metadata into the db
+		// Fake notif 
+		notificationPresent.set(true);
 	}
 
 	@Override
@@ -165,5 +169,14 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	 */
 	private FileDTO fakeDownload(String userJwtToken, String fileName, String targetDirectory, String newName) throws FileException, UserException {
 		return details(userJwtToken, fileName);
+	}
+
+	@Override
+	public String waitForNotification(String jwtToken) {
+		while(!notificationPresent.get()) {
+			
+		}
+		notificationPresent.set(false);
+		return "Heyheyhey";
 	}
 }

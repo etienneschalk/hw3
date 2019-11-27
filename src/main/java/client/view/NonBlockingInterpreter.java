@@ -3,6 +3,7 @@ package client.view;
 import java.util.List;
 import java.util.Scanner;
 
+import client.net.ServerSpy;
 import common.FileCatalog;
 import common.FileDTO;
 import server.model.FileException;
@@ -22,6 +23,7 @@ public class NonBlockingInterpreter implements Runnable {
 
 	private FileCatalog fileCatalog;
 	private String jwtToken;
+	
 
 	/**
 	 * Starts the interpreter, if not starting yet.
@@ -55,6 +57,8 @@ public class NonBlockingInterpreter implements Runnable {
 					String username1 = commandHandler.getParam(1);
 					String password1 = commandHandler.getParam(2);
 					jwtToken = fileCatalog.login(username1, password1);
+					// Starts the spy
+//					new Thread(new ServerSpy(jwtToken, fileCatalog)).start();
 					break;
 				case LIST:
 					List<? extends FileDTO> files = fileCatalog.list(jwtToken);

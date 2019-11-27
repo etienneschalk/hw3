@@ -27,4 +27,6 @@ public interface FileCatalog extends Remote {
 
 	public void delete(String jwtToken, String fileName) throws RemoteException, FileException, UserException;
 
+	public String waitForNotification(String jwtToken)throws RemoteException;
+
 }
