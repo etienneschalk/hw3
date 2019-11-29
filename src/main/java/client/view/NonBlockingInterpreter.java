@@ -23,7 +23,6 @@ public class NonBlockingInterpreter implements Runnable {
 
 	private FileCatalog fileCatalog;
 	private String jwtToken;
-	
 
 	/**
 	 * Starts the interpreter, if not starting yet.
@@ -149,9 +148,22 @@ public class NonBlockingInterpreter implements Runnable {
 		if (file == null) {
 			safePrintln("The file could not be retrieved or does not exist!");
 		} else {
-			safePrintln(file.getName() + "|" + file.getPermission() + "|" + file.getSize().toString() + " - "
+			safePrintln("[ " + file.getPermission() + " ] " + file.getSize().toString() + " \t" 
+					+ normalizeFileNameString(file.getName(), 16) + " @ "
 					+ file.getOwnerName());
 		}
+	}
+
+	private String normalizeFileNameString(String fileName, int newSize) {
+		int currentStringSize = fileName.length();
+		if (currentStringSize > newSize) {
+			String truncatedString = fileName.substring(0, newSize - 3);
+			return truncatedString + "...";
+		} else {
+			String whiteSpaces = " ".repeat(newSize - currentStringSize);
+			return fileName + whiteSpaces;
+		}
+		
 	}
 
 }

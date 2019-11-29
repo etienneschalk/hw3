@@ -69,6 +69,11 @@ public class File implements FileDTO {
 	public String getPermission() {
 		return writePermission ? "W" : "R";
 	}
+	
+	@Override
+	public boolean getPermissionBoolean() {
+		return writePermission;
+	}
 
 	@Override
 	public String getOwnerName() {

@@ -60,7 +60,7 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 				if (jwtString == null) {
 					throw new UserException("Unexpected error during authentication.");
 				}
-				threadLocalLoggedInUser.set(user);	// We remember the information about the successfully logged in user
+				threadLocalLoggedInUser.set(user); // We remember the information about the successfully logged in user
 				return jwtString;
 			}
 		} else {
@@ -93,9 +93,10 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	public void upload(String jwtToken, String newName, boolean writePermission) throws FileException, UserException {
 		// TODO Auto-generated method stub
 		requireAuthentication(jwtToken);
-		fakeUpload(newName, writePermission); // Just insert fake metadata into the db
-		// Fake notif 
+		// Fake notif
 		notificationPresent.set(true);
+		fakeUpload(newName, writePermission); // Just insert fake metadata into the db
+
 	}
 
 	@Override
@@ -109,7 +110,18 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	public void delete(String jwtToken, String fileName) throws FileException, UserException {
 		requireAuthentication(jwtToken);
 		try {
-			fc.deleteFile(fileName);
+			FileDTO file = fc.findFileByFileName(fileName, true);
+			User loggedInUser = threadLocalLoggedInUser.get();
+			boolean writePermission = file.getPermissionBoolean();
+			boolean isOwner = loggedInUser.getName().equals(file.getOwnerName());
+
+			if (writePermission || isOwner) {
+				fc.deleteFile(fileName);
+			} else {
+				throw new UserException("You are not allowed to delete the file " + fileName + ".");
+			}
+		} catch (UserException e) {
+			throw new FileException(e.getMessage());
 		} catch (Exception e) {
 			throw new FileException("Could not delete the file " + fileName + ".");
 		}
@@ -164,17 +176,18 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	 * @param fileName
 	 * @param targetDirectory
 	 * @param newName
-	 * @throws UserException 
-	 * @throws FileException 
+	 * @throws UserException
+	 * @throws FileException
 	 */
-	private FileDTO fakeDownload(String userJwtToken, String fileName, String targetDirectory, String newName) throws FileException, UserException {
+	private FileDTO fakeDownload(String userJwtToken, String fileName, String targetDirectory, String newName)
+			throws FileException, UserException {
 		return details(userJwtToken, fileName);
 	}
 
 	@Override
 	public String waitForNotification(String jwtToken) {
-		while(!notificationPresent.get()) {
-			
+		while (notificationPresent == null || notificationPresent.get() == null || notificationPresent.get() == false) {
+			System.out.println("nope");
 		}
 		notificationPresent.set(false);
 		return "Heyheyhey";
