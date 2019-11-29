@@ -2,11 +2,14 @@ package server.controller;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
-import javax.persistence.EntityManager;
+import org.eclipse.persistence.internal.databaseaccess.Accessor;
 
 import common.FileCatalog;
+import common.FileChangeListener;
 import common.FileDTO;
 import server.integration.FileCatalogDAO;
 import server.model.File;
@@ -29,6 +32,7 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	private AuthenticationService authenticationService;
 	private final ThreadLocal<User> threadLocalLoggedInUser = new ThreadLocal<>();
 	private final ThreadLocal<Boolean> notificationPresent = new ThreadLocal<>();
+	private List<FileChangeListener> fileChangeListeners = new ArrayList<>();
 
 	public Controller() throws RemoteException {
 		super();
@@ -82,7 +86,9 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	public FileDTO details(String jwtToken, String fileName) throws FileException, UserException {
 		requireAuthentication(jwtToken);
 		try {
-			return fc.findFileByFileName(fileName, true);
+			FileDTO file = fc.findFileByFileName(fileName, true);
+			notifyFileChangeListener(file, "DETAILS");
+			return file;
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new FileException("Could not retrieve the details of the file " + fileName + ".");
@@ -191,5 +197,53 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 		}
 		notificationPresent.set(false);
 		return "Heyheyhey";
+	}
+
+	@Override
+	public void addFileChangeListener(FileChangeListener fcl) throws RemoteException {
+		fileChangeListeners.add(fcl);
+	}
+
+	@Override
+	public void removeFileChangeListener(FileChangeListener fcl) throws RemoteException {
+		fileChangeListeners.remove(fcl);
+	}
+	
+	/**
+	 * When a file is:
+	 * - read with DETAILS command 
+	 * - downloaded with DOWN command 
+	 * - uploaded and crunched (TODO) with UPW command 
+	 * 	(if a file exists we can rewrite it but cannot lock it with read only, and its owner still the same
+	 * @param file
+	 */
+	private void notifyFileChangeListener(FileDTO file, String action) {
+		if (file == null) {
+			return;
+		}
+		String owner = file.getOwnerName();
+		User loggedInUser = this.threadLocalLoggedInUser.get();
+		String accessor = "";
+		if (loggedInUser != null) {
+			accessor = loggedInUser.getName();
+		} else {
+//			throw new UserException("No user logged in");
+			return;
+		}
+		String listenerUsername;
+		
+		Iterator<FileChangeListener> iteratorFcl = this.fileChangeListeners.iterator();
+		FileChangeListener fcl;
+		while(iteratorFcl.hasNext()) {
+			fcl = iteratorFcl.next();
+			try {
+				listenerUsername = fcl.getUsername();
+				if (listenerUsername.equals(owner)) {
+					fcl.fileChanged(file, accessor, action);
+				}
+			} catch (RemoteException e) {
+				fileChangeListeners.remove(fcl);
+			}
+		}
 	}
 }

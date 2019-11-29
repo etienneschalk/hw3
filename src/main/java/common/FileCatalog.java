@@ -11,22 +11,27 @@ public interface FileCatalog extends Remote {
 	/**
 	 * The default URI of the file catalog in the RMI registry
 	 */
-	public static final String FILE_CATALOG_NAME_IN_REGISTRY = "fileCatalog";
+	 static final String FILE_CATALOG_NAME_IN_REGISTRY = "fileCatalog";
 
-	public void register(String username, String password) throws RemoteException, UserException;
+	 void register(String username, String password) throws RemoteException, UserException;
 
-	public String login(String username, String password) throws RemoteException, UserException;
+	 String login(String username, String password) throws RemoteException, UserException;
 
-	public List<? extends FileDTO> list(String jwtToken) throws RemoteException, FileException, UserException;
+	 List<? extends FileDTO> list(String jwtToken) throws RemoteException, FileException, UserException;
 
-	public FileDTO details(String jwtToken, String fileName) throws RemoteException, FileException, UserException;
+	 FileDTO details(String jwtToken, String fileName) throws RemoteException, FileException, UserException;
 
-	public void upload(String jwtToken, String newName, boolean writePermission) throws RemoteException, FileException, UserException;
+	 void upload(String jwtToken, String newName, boolean writePermission) throws RemoteException, FileException, UserException;
 
-	public FileDTO download(String jwtToken, String fileName, String targetDirectory, String newName) throws RemoteException, FileException, UserException;
+	 FileDTO download(String jwtToken, String fileName, String targetDirectory, String newName) throws RemoteException, FileException, UserException;
 
-	public void delete(String jwtToken, String fileName) throws RemoteException, FileException, UserException;
+	 void delete(String jwtToken, String fileName) throws RemoteException, FileException, UserException;
 
-	public String waitForNotification(String jwtToken)throws RemoteException;
-
+	 String waitForNotification(String jwtToken)throws RemoteException;
+	
+	// Observer registration
+	// The server is an "observable"
+	 void addFileChangeListener(FileChangeListener fcl) throws RemoteException;
+	 
+	 void removeFileChangeListener(FileChangeListener fcl) throws RemoteException;
 }

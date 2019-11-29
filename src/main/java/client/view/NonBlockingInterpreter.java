@@ -1,12 +1,13 @@
 package client.view;
 
+import java.rmi.RemoteException;
 import java.util.List;
 import java.util.Scanner;
 
-import client.net.ServerSpy;
+import client.net.FileChangeListenerImpl;
 import common.FileCatalog;
+import common.FileChangeListener;
 import common.FileDTO;
-import server.model.FileException;
 
 /**
  * Non blocking interpreter, largely inspired from previous assignments. A
@@ -23,6 +24,8 @@ public class NonBlockingInterpreter implements Runnable {
 
 	private FileCatalog fileCatalog;
 	private String jwtToken;
+	
+	private FileChangeListener fileChangeListener;
 
 	/**
 	 * Starts the interpreter, if not starting yet.
@@ -56,8 +59,13 @@ public class NonBlockingInterpreter implements Runnable {
 					String username1 = commandHandler.getParam(1);
 					String password1 = commandHandler.getParam(2);
 					jwtToken = fileCatalog.login(username1, password1);
-					// Starts the spy
-//					new Thread(new ServerSpy(jwtToken, fileCatalog)).start();
+					try {
+						this.fileChangeListener = new FileChangeListenerImpl(username1);
+						fileCatalog.addFileChangeListener(this.fileChangeListener);
+					} catch(RemoteException e) {
+						niceErrorPrint(e);
+						return;
+					}
 					break;
 				case LIST:
 					List<? extends FileDTO> files = fileCatalog.list(jwtToken);
@@ -96,6 +104,7 @@ public class NonBlockingInterpreter implements Runnable {
 					break;
 				case LOGOUT:
 					jwtToken = null;
+					fileCatalog.removeFileChangeListener(this.fileChangeListener);
 					safePrintln("You have been logged out.");
 					break;
 				case QUIT:
