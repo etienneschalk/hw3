@@ -14,6 +14,7 @@ public class ClientMain {
 	
 	public static void main(String[] argv) {
 		try {
+			System.out.println("Home Folder: " + System.getProperty("user.home"));
 			new NonBlockingInterpreter().start((FileCatalog) Naming.lookup(FileCatalog.FILE_CATALOG_NAME_IN_REGISTRY));
 		} catch (NotBoundException e) {
 			 System.err.println(TAG + e.getClass().getName() + ERROR_MESSAGE);
