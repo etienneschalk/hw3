@@ -4,7 +4,6 @@ import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
-
 import client.view.NonBlockingInterpreter;
 import common.FileCatalog;
 
@@ -15,6 +14,7 @@ public class ClientMain {
 	public static void main(String[] argv) {
 		try {
 			new NonBlockingInterpreter().start((FileCatalog) Naming.lookup(FileCatalog.FILE_CATALOG_NAME_IN_REGISTRY));
+			
 		} catch (NotBoundException e) {
 			 System.err.println(TAG + e.getClass().getName() + ERROR_MESSAGE);
 		} catch (MalformedURLException e) {
@@ -22,5 +22,6 @@ public class ClientMain {
 		} catch (RemoteException e) {
 			 System.out.println(TAG + e.getClass().getName() + ERROR_MESSAGE);
 		}
+		
 	}
 }

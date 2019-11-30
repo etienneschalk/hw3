@@ -8,6 +8,8 @@ import java.rmi.registry.Registry;
 
 import common.FileCatalog;
 import server.controller.Controller;
+import tcp.FileServerDownload;
+import tcp.FileServerUpload;
 
 public class ServerMain {
 	public static final String fileCatalogName = FileCatalog.FILE_CATALOG_NAME_IN_REGISTRY;
@@ -24,6 +26,10 @@ public class ServerMain {
 			ServerMain server = new ServerMain();
 			server.startRMIServant();
 			System.out.println("File Catalog server started");
+			
+			new Thread(new FileServerUpload()).start();
+			new Thread(new FileServerDownload()).start();
+			
 		} catch (Exception e) {
 			niceErrorPrint(e);
 		} 

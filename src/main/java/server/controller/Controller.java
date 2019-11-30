@@ -166,4 +166,13 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	private FileDTO fakeDownload(String userJwtToken, String fileName, String targetDirectory, String newName) throws FileException, UserException {
 		return details(userJwtToken, fileName);
 	}
+	
+//	public static void verifyJWT(String userJwtToken) throws UserException{
+//		try {
+//
+//		}
+//		catch{
+//			
+//		}
+//	}
 }
