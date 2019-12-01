@@ -94,7 +94,12 @@ public class NonBlockingInterpreter implements Runnable {
 				case UPW:
 					String pathFileToUpload = commandHandler.getParam(1);
 					String newFileNameOnServer = commandHandler.getParam(2);
+					if (newFileNameOnServer == null || "".equals(newFileNameOnServer)) {
+						newFileNameOnServer = pathFileToUpload.substring(pathFileToUpload.lastIndexOf('/') + 1);
+					}
 					new Thread(new TCPFileUpload(jwtToken, pathFileToUpload, newFileNameOnServer)).start();
+
+//					fileCatalog.upload(jwtToken, newFileNameOnServerReadOnly, true);
 					// TODO
 					break;
 				case DOWN:
@@ -115,8 +120,13 @@ public class NonBlockingInterpreter implements Runnable {
 					jwtToken = null;
 					fileCatalog.removeFileChangeListener(this.fileChangeListener);
 					safePrintln("You have been logged out.");
+					receivingCommands = false;
+					safePrintln("Good bye!");
 					break;
 				case QUIT:
+					jwtToken = null;
+					fileCatalog.removeFileChangeListener(this.fileChangeListener);
+					safePrintln("You have been logged out.");
 					receivingCommands = false;
 					safePrintln("Good bye!");
 					break;

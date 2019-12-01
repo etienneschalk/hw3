@@ -31,7 +31,8 @@ public class ClientHandler implements Runnable {
     private String clientIntent;
 	private String clientJwtString;
 	private String providedFileName;
-	private final String serverDirectory = "C:/Users/Gibson/Desktop/hm3server/";
+//	private final String serverDirectory = "C:/Users/Gibson/Desktop/hm3server/";
+	private final String serverDirectory = "C:/Users/etis3/Desktop/hm3server/";
 	private final String okStatusCode = "200";
 	private final String fileNotFoundStatusCode = "404";
 
@@ -69,20 +70,30 @@ public class ClientHandler implements Runnable {
     	try {
 			fromClient = clientSocket.getInputStream();
 			
-			byte[] fileNamerByteArray  = new byte [1024];
-            bytesRead = fromClient.read(fileNamerByteArray,0,fileNamerByteArray.length);
-            current = bytesRead;
+			byte[] fileNamerByteArray  = new byte[1>>20];
+			
+//            bytesRead = fromClient.read(fileNamerByteArray,0,fileNamerByteArray.length);
+//            current = bytesRead;
+			current = 0;
             
             System.out.println(bytesRead);
+            System.out.println("Before do while");
             do {
-                bytesRead =
-                   fromClient.read(fileNamerByteArray, current, (fileNamerByteArray.length-current));
+//                bytesRead =
+//                   fromClient.read(fileNamerByteArray, current, (fileNamerByteArray.length-current));
+            	System.out.println("Before bytesRead");
+//                bytesRead = fromClient.read(fileNamerByteArray, current, 50000000);
+                bytesRead = fromClient.read(fileNamerByteArray);
                 System.out.println(bytesRead);
                 if(bytesRead >= 0) current += bytesRead;
-             } while(bytesRead > -1);
+                System.out.println(bytesRead);
+             } while(bytesRead > 0);
+//    	} while(bytesRead > -1);
             
-            System.out.println(serverDirectory + new String(fileNamerByteArray));
-            File requestedFile = new File(serverDirectory + new String(fileNamerByteArray));
+//            System.out.println(serverDirectory + new String(fileNamerByteArray));
+            System.out.println(serverDirectory + new String("test.txt"));
+//            File requestedFile = new File(serverDirectory + new String(fileNamerByteArray));
+            File requestedFile = new File(serverDirectory + new String("TTTTTTTTTTT"));
             
             if(requestedFile.exists() && !requestedFile.isDirectory()) {
             	int fileSize = (int) requestedFile.length();
@@ -200,6 +211,7 @@ public class ClientHandler implements Runnable {
             //convert byte arrays to strings
             clientJwtString = new String(jwtArray);
             providedFileName = new String(fileNameArray);
+            
             //directory
             fos = new FileOutputStream(serverDirectory  + providedFileName);
             bos = new BufferedOutputStream(fos);
