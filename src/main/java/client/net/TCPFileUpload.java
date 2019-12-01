@@ -24,7 +24,8 @@ public class TCPFileUpload implements Runnable{
     private String newFileNameOnServer;
 	private boolean connected = false;
 	private final String delimeter = " ";
-	private File userFile;
+	private File userFile;	
+	private int actualFileLentgth;
 	
 	
 	private static final String host = "localhost";
@@ -100,6 +101,7 @@ public class TCPFileUpload implements Runnable{
 
 	public void uploadFile(){
 		int fileSize = (int) userFile.length();
+		this.actualFileLentgth = fileSize;
 		FileInputStream fis;
 
 		try {
@@ -156,6 +158,10 @@ public class TCPFileUpload implements Runnable{
 					e.printStackTrace();
 				}
 		}
+	}
+	
+	public int getActualFileLentgth() {
+		return actualFileLentgth;
 	}
 
 	@Override

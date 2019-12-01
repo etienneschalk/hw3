@@ -10,7 +10,7 @@
 
 - Open C:\Users\etis3\Desktop\hm3client (simulating a client folder, we can choose another but we use it)
 - Open C:\Users\etis3\Desktop\hm3server (the actual folder of the server)
-
+- Delete angela.jpeg and angelaTRUE.jpeg if they exist in the server 
 
 ## Commands
 register 	username 		password
@@ -24,6 +24,7 @@ delete 		serverFileName
 logout (similar to quit)
 quit
 help
+
 ## Demo
 
 [1] = angela merkel 

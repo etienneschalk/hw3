@@ -1,11 +1,9 @@
 package client.view;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.rmi.RemoteException;
 import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.CompletableFuture;
 
 import client.net.FileChangeListenerImpl;
 import client.net.TCPFileDownload;
@@ -65,15 +63,13 @@ public class NonBlockingInterpreter implements Runnable {
 					String username1 = commandHandler.getParam(1);
 					String password1 = commandHandler.getParam(2);
 					jwtToken = fileCatalog.login(username1, password1);
-
 					try {
 						this.fileChangeListener = new FileChangeListenerImpl(username1);
 						fileCatalog.addFileChangeListener(this.fileChangeListener);
 					} catch (RemoteException e) {
 						niceErrorPrint(e);
-						return;
+						return;	
 					}
-
 					break;
 				case LIST:
 					List<? extends FileDTO> files = fileCatalog.list(jwtToken);
@@ -89,25 +85,27 @@ public class NonBlockingInterpreter implements Runnable {
 				case UPR:
 					String pathFileToUploadReadOnly = commandHandler.getParam(1);
 					String newFileNameOnServerReadOnly = commandHandler.getParam(2);
-					if (newFileNameOnServerReadOnly == null || "".equals(newFileNameOnServerReadOnly)) {
-						newFileNameOnServerReadOnly = pathFileToUploadReadOnly
-								.substring(pathFileToUploadReadOnly.lastIndexOf('/') + 1);
-					}
-					new Thread(new TCPFileUpload(jwtToken, pathFileToUploadReadOnly, newFileNameOnServerReadOnly))
-							.start();
-
-					fileCatalog.upload(jwtToken, newFileNameOnServerReadOnly, false);
-//					fileCatalog.checkLogin(jwtToken);
+					uploadHandler(pathFileToUploadReadOnly, newFileNameOnServerReadOnly, false);
+//					if (newFileNameOnServerReadOnly == null || "".equals(newFileNameOnServerReadOnly)) {
+//						newFileNameOnServerReadOnly = pathFileToUploadReadOnly
+//								.substring(pathFileToUploadReadOnly.lastIndexOf('/') + 1);
+//					}
+//					new Thread(new TCPFileUpload(jwtToken, pathFileToUploadReadOnly, newFileNameOnServerReadOnly))
+//							.start();
+//
+//					fileCatalog.upload(jwtToken, newFileNameOnServerReadOnly, false);
+////					fileCatalog.checkLogin(jwtToken);
 					break;
 				case UPW:
 					String pathFileToUpload = commandHandler.getParam(1);
 					String newFileNameOnServer = commandHandler.getParam(2);
-					if (newFileNameOnServer == null || "".equals(newFileNameOnServer)) {
-						newFileNameOnServerReadOnly = pathFileToUpload.substring(pathFileToUpload.lastIndexOf('/') + 1);
-					}
-					fileCatalog.checkLogin(jwtToken);
-					new Thread(new TCPFileUpload(jwtToken, pathFileToUpload, newFileNameOnServer)).start();
-					fileCatalog.upload(jwtToken, newFileNameOnServer, true);
+					uploadHandler(pathFileToUpload, newFileNameOnServer, true);
+//					if (newFileNameOnServer == null || "".equals(newFileNameOnServer)) {
+//						newFileNameOnServerReadOnly = pathFileToUpload.substring(pathFileToUpload.lastIndexOf('/') + 1);
+//					}
+//					fileCatalog.checkLogin(jwtToken);
+//					new Thread(new TCPFileUpload(jwtToken, pathFileToUpload, newFileNameOnServer)).start();
+//					fileCatalog.upload(jwtToken, newFileNameOnServer, true);
 
 					break;
 				case DOWN:
@@ -178,9 +176,18 @@ public class NonBlockingInterpreter implements Runnable {
 	}
 
 	private void niceErrorPrint(Exception e) {
-		safePrintln("[" + e.getClass().getName() + "]");
-		safePrintln("\tMessage: " + e.getMessage());
-		safePrintln("\tCause: " + e.getCause());
+		if (e.getClass().equals(FileException.class)) {
+			safePrintln("[File Error]");
+			safePrintln("\nDetails: " + e.getMessage());
+		}else if (e.getClass().equals(UserException.class)) {
+			safePrintln("[User Error]");
+			safePrintln("\nDetails: " + e.getMessage());
+		}
+		else {
+			safePrintln("[" + e.getClass().getName() + "]");
+			safePrintln("\tMessage: " + e.getMessage());
+			safePrintln("\tCause: " + e.getCause());
+		}
 	}
 
 	private void printDetails(FileDTO file) {
@@ -189,8 +196,8 @@ public class NonBlockingInterpreter implements Runnable {
 		if (file == null) {
 			safePrintln("The file could not be retrieved or does not exist!");
 		} else {
-			safePrintln("[ " + file.getPermission() + " ] " + file.getSize().toString() + " \t" 
-							+ normalizeFileNameString(file.getName(), 16));
+			safePrintln("[ " + file.getPermission() + " ] " + file.getSize().toString() + " \t"
+					+ normalizeFileNameString(file.getName(), 16) + "\t" + file.getOwnerName());
 		}
 	}
 
@@ -203,6 +210,15 @@ public class NonBlockingInterpreter implements Runnable {
 			String whiteSpaces = " ".repeat(newSize - currentStringSize);
 			return fileName + whiteSpaces;
 		}
+	}
+
+	private void uploadHandler(String pathFileToUpload, String newFileNameOnServer, boolean writePermission) throws RemoteException, FileException, UserException {
+		if (newFileNameOnServer == null || "".equals(newFileNameOnServer)) {
+			newFileNameOnServer = pathFileToUpload.substring(pathFileToUpload.lastIndexOf('/') + 1);
+		}
+		TCPFileUpload uploadWritableFile = new TCPFileUpload(jwtToken, pathFileToUpload, newFileNameOnServer);
+		int fileLength = uploadWritableFile.getActualFileLentgth();
+		fileCatalog.upload(jwtToken, newFileNameOnServer, writePermission, fileLength);
 	}
 
 }

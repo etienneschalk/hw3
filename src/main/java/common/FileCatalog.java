@@ -21,7 +21,7 @@ public interface FileCatalog extends Remote {
 
 	 FileDTO details(String jwtToken, String fileName) throws RemoteException, FileException, UserException;
 
-	 void upload(String jwtToken, String newName, boolean writePermission) throws RemoteException, FileException, UserException;
+	 void upload(String jwtToken, String newName, boolean writePermission, int fileSize) throws RemoteException, FileException, UserException;
 
 	 FileDTO download(String jwtToken, String fileName, String targetDirectory, String newName) throws RemoteException, FileException, UserException;
 

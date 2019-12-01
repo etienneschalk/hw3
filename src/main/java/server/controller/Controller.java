@@ -2,10 +2,9 @@ package server.controller;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
-import javax.persistence.EntityManager;
 
 import common.FileCatalog;
 import common.FileChangeListener;
@@ -29,8 +28,9 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	private static final long serialVersionUID = -2027287211344704385L;
 	private FileCatalogDAO fc;
 	private AuthenticationService authenticationService;
-	private final ThreadLocal<User> threadLocalLoggedInUser = new ThreadLocal<>();
-	private List<FileChangeListener> fileChangeListeners;
+//	private final ThreadLocal<User> threadLocalLoggedInUser = new ThreadLocal<>();
+	private  ThreadLocal<User> threadLocalLoggedInUser = new ThreadLocal<>();
+	private List<FileChangeListener> fileChangeListeners = new ArrayList<>();
 
 	public Controller() throws RemoteException {
 		super();
@@ -93,7 +93,7 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	}
 
 	@Override
-	public void upload(String jwtToken, String newName, boolean writePermission) throws FileException, UserException {
+	public void upload(String jwtToken, String newName, boolean writePermission, int fileSize) throws FileException, UserException {
 		requireAuthentication(jwtToken);
 		// We try to delete an eventually existing file
 		boolean theFileAlreadyExists = false;
@@ -128,7 +128,7 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 		} catch (Exception e) {
 			throw new FileException("Could not delete the file " + newName + ".");
 		}
-		databaseUpload(newName, writePermission); // Insert file meta data in the DB
+		databaseUpload(newName, writePermission, fileSize); // Insert file meta data in the DB
 		if (overwrite) {
 			System.out.println("Notify with OVERWRITE");
 			notifyFileChangeListener(file, "UPW");
@@ -206,10 +206,11 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	 * 
 	 * @param newName
 	 */
-	private void databaseUpload(String newName, boolean writePermission) throws UserException {
-		int size = newName.length();
+	private void databaseUpload(String newName, boolean writePermission, int fileSize) throws UserException {
+//		int size = newName.length();
 		String url = newName;
-		createFileMetaData(newName, size, url, writePermission);
+//		createFileMetaData(newName, size, url, writePermission);
+		createFileMetaData(newName, fileSize, url, writePermission);
 	}
 
 	/**
@@ -286,11 +287,11 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 
 	@Override
 	public void addFileChangeListener(FileChangeListener fcl) throws RemoteException {
-		this.addFileChangeListener(fcl);
+		this.fileChangeListeners.add(fcl);
 	}
 
 	@Override
 	public void removeFileChangeListener(FileChangeListener fcl) throws RemoteException {
-		this.removeFileChangeListener(fcl);
+		this.fileChangeListeners.remove(fcl);
 	}
 }
