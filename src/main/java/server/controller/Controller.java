@@ -26,10 +26,10 @@ import server.services.AuthenticationServiceImpl;
  */
 public class Controller extends UnicastRemoteObject implements FileCatalog {
 	private static final long serialVersionUID = -2027287211344704385L;
-	private FileCatalogDAO fc;
+	private final FileCatalogDAO fc;
 	private AuthenticationService authenticationService;
 //	private final ThreadLocal<User> threadLocalLoggedInUser = new ThreadLocal<>();
-	private  ThreadLocal<User> threadLocalLoggedInUser = new ThreadLocal<>();
+	private ThreadLocal<User> threadLocalLoggedInUser = new ThreadLocal<>();
 	private List<FileChangeListener> fileChangeListeners = new ArrayList<>();
 
 	public Controller() throws RemoteException {
