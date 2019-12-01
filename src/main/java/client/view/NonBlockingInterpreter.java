@@ -88,8 +88,12 @@ public class NonBlockingInterpreter implements Runnable {
 				case UPR:
 					String pathFileToUploadReadOnly = commandHandler.getParam(1);
 					String newFileNameOnServerReadOnly = commandHandler.getParam(2);
+					if (newFileNameOnServerReadOnly == null || "".equals(newFileNameOnServerReadOnly)) {
+						newFileNameOnServerReadOnly = pathFileToUploadReadOnly.substring(pathFileToUploadReadOnly.lastIndexOf('/') + 1);
+					}
+					new Thread(new TCPFileUpload(jwtToken, pathFileToUploadReadOnly, newFileNameOnServerReadOnly)).start();
+					
 					fileCatalog.upload(jwtToken, newFileNameOnServerReadOnly, false);
-					// TODO
 					break;
 				case UPW:
 					String pathFileToUpload = commandHandler.getParam(1);
@@ -99,17 +103,17 @@ public class NonBlockingInterpreter implements Runnable {
 					}
 					new Thread(new TCPFileUpload(jwtToken, pathFileToUpload, newFileNameOnServer)).start();
 
-//					fileCatalog.upload(jwtToken, newFileNameOnServerReadOnly, true);
-					// TODO
+					fileCatalog.upload(jwtToken, newFileNameOnServer, true);
 					break;
 				case DOWN:
 					String fileNameToDL = commandHandler.getParam(1);
 					String targetDirectory = commandHandler.getParam(2);
 					String newNameDL = commandHandler.getParam(3);
 					
+					// Don't forget to put a slash at the end
 					new Thread(new TCPFileDownload(jwtToken, targetDirectory, fileNameToDL, newNameDL)).start();
-					//fileCatalog.download(jwtToken, fileNameToDL, targetDirectory, newNameDL);
-					// TODO
+					
+					fileCatalog.download(jwtToken, fileNameToDL, targetDirectory, newNameDL);
 					break;
 				case DELETE:
 					String fileNameToDelete = commandHandler.getParam(1);
@@ -145,6 +149,7 @@ public class NonBlockingInterpreter implements Runnable {
 				niceErrorPrint(e);
 			}
 		}
+		safePrintln("Program terminated.");
 	}
 
 	private String readNextLine() {

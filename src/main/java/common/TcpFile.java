@@ -3,7 +3,7 @@ package common;
 import java.io.Serializable;
 
 public class TcpFile implements Serializable{
-	private static final long serialVersionUID = 2141852141920349653L;
+	private static final long serialVersionUID = 214120349654L;
 	
 	private byte[] fileContents;
 	private String owner;

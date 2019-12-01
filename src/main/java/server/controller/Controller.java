@@ -95,12 +95,45 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 
 	@Override
 	public void upload(String jwtToken, String newName, boolean writePermission) throws FileException, UserException {
-		// TODO Auto-generated method stub
 		requireAuthentication(jwtToken);
-		// Fake notif
-		notificationPresent.set(true);
-		fakeUpload(newName, writePermission); // Just insert fake metadata into the db
+		// We try to delete an eventually existing file
+		boolean theFileAlreadyExists = false;
+		boolean fileWritePermission = true;
+		boolean isOwner = true;
+		FileDTO file = null;
 
+		try {
+			file = fc.findFileByFileName(newName, true);
+			fileWritePermission = file.getPermissionBoolean();
+			User loggedInUser = checkAndGetAndRefreshUser();
+			isOwner = loggedInUser.getName().equals(file.getOwnerName());
+			theFileAlreadyExists = true;
+		} catch (Exception e) {
+			// The file does not exist, we can upload
+			theFileAlreadyExists = false;
+		}
+
+		// Check if writable / owner
+		boolean overwrite = false;
+		try {
+			if (theFileAlreadyExists) {
+				if (fileWritePermission || isOwner) {
+					fc.deleteFile(newName);
+					overwrite = true;
+				} else {
+					throw new UserException("You are not allowed to delete the file " + newName + ".");
+				}
+			}
+		} catch (UserException e) {
+			throw new FileException(e.getMessage());
+		} catch (Exception e) {
+			throw new FileException("Could not delete the file " + newName + ".");
+		}
+		databaseUpload(newName, writePermission); // Insert file meta data in the DB
+		if (overwrite) {
+			System.out.println("Notify with OVERWRITE");
+			notifyFileChangeListener(file, "UPW");
+		}
 	}
 
 	@Override
@@ -115,12 +148,15 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 		requireAuthentication(jwtToken);
 		try {
 			FileDTO file = fc.findFileByFileName(fileName, true);
-			User loggedInUser = threadLocalLoggedInUser.get();
+			User loggedInUser = checkAndGetAndRefreshUser();
 			boolean writePermission = file.getPermissionBoolean();
 			boolean isOwner = loggedInUser.getName().equals(file.getOwnerName());
 
 			if (writePermission || isOwner) {
 				fc.deleteFile(fileName);
+
+				System.out.println("Notify with DELETE");
+				notifyFileChangeListener(file, "DELETE");
 			} else {
 				throw new UserException("You are not allowed to delete the file " + fileName + ".");
 			}
@@ -159,8 +195,11 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	 * @param url
 	 * @param writePermission
 	 */
-	private void createFileMetaData(String newName, int size, String url, boolean writePermission) {
-		fc.createFile(new File(newName, size, url, writePermission, threadLocalLoggedInUser.get()));
+	private void createFileMetaData(String newName, int size, String url, boolean writePermission)
+			throws UserException {
+		User loggedInUser = checkAndGetAndRefreshUser();
+
+		fc.createFile(new File(newName, size, url, writePermission, loggedInUser));
 	}
 
 	/**
@@ -168,9 +207,10 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	 * 
 	 * @param newName
 	 */
-	private void fakeUpload(String newName, boolean writePermission) {
+	private void databaseUpload(String newName, boolean writePermission) throws UserException {
 		int size = newName.length();
-		String url = "/fakeurl/" + newName;
+//		String url = "/fakeurl/" + newName;
+		String url = newName;
 		createFileMetaData(newName, size, url, writePermission);
 	}
 
@@ -185,9 +225,12 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	 */
 	private FileDTO fakeDownload(String userJwtToken, String fileName, String targetDirectory, String newName)
 			throws FileException, UserException {
+
+		System.out.println("Notify with DOWNLOAD");
+		FileDTO file = fc.findFileByFileName(fileName, true);
+		notifyFileChangeListener(file, "DOWN");
 		return details(userJwtToken, fileName);
 	}
-
 
 	@Override
 	public String waitForNotification(String jwtToken) {
@@ -207,21 +250,21 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	public void removeFileChangeListener(FileChangeListener fcl) throws RemoteException {
 		fileChangeListeners.remove(fcl);
 	}
-	
+
 	/**
-	 * When a file is:
-	 * - read with DETAILS command 
-	 * - downloaded with DOWN command 
-	 * - uploaded and crunched (TODO) with UPW command 
-	 * 	(if a file exists we can rewrite it but cannot lock it with read only, and its owner still the same
+	 * When a file is: - read with DETAILS command - downloaded with DOWN command -
+	 * uploaded and crunched (TODO) with UPW command (if a file exists we can
+	 * rewrite it but cannot lock it with read only, and its owner still the same
+	 * 
 	 * @param file
 	 */
-	private void notifyFileChangeListener(FileDTO file, String action) {
+	private void notifyFileChangeListener(FileDTO file, String action) throws UserException {
 		if (file == null) {
 			return;
 		}
 		String owner = file.getOwnerName();
-		User loggedInUser = this.threadLocalLoggedInUser.get();
+		User loggedInUser = checkAndGetAndRefreshUser();
+
 		String accessor = "";
 		if (loggedInUser != null) {
 			accessor = loggedInUser.getName();
@@ -230,23 +273,33 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 			return;
 		}
 		String listenerUsername;
-		
+
 		Iterator<FileChangeListener> iteratorFcl = this.fileChangeListeners.iterator();
-		FileChangeListener fcl;
-		while(iteratorFcl.hasNext()) {
-			fcl = iteratorFcl.next();
-			try {
-				listenerUsername = fcl.getUsername();
-				if (listenerUsername.equals(owner)) {
-					fcl.fileChanged(file, accessor, action);
+		synchronized (iteratorFcl) {
+			FileChangeListener fcl;
+			while (iteratorFcl.hasNext()) {
+				fcl = iteratorFcl.next();
+				try {
+					listenerUsername = fcl.getUsername();
+					if (listenerUsername.equals(owner)) {
+						fcl.fileChanged(file, accessor, action);
+					}
+				} catch (RemoteException e) {
+					fileChangeListeners.remove(fcl);
 				}
-			} catch (RemoteException e) {
-				fileChangeListeners.remove(fcl);
 			}
 		}
 	}
 
-	
+	public User checkAndGetAndRefreshUser() throws UserException {
+		User loggedInUser = threadLocalLoggedInUser.get();
+		if (loggedInUser == null) {
+			throw new UserException("Please terminate the program and restart again.");
+		}
+		threadLocalLoggedInUser.set(loggedInUser); // refresh
+		return loggedInUser;
+	}
+
 //	public static void verifyJWT(String userJwtToken) throws UserException{
 //		try {
 //

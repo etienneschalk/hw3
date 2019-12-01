@@ -6,6 +6,7 @@ import java.rmi.RemoteException;
 public interface FileChangeListener extends Remote {
 
 	void fileChanged(FileDTO file, String accessor, String action) throws RemoteException;
+	void fileChanged(String fileName, String accessor, String action) throws RemoteException;
 	
 	String getUsername() throws RemoteException;
 }

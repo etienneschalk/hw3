@@ -16,6 +16,7 @@ import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.io.StreamCorruptedException;
 import java.io.UncheckedIOException;
 import java.net.Socket;
 import java.nio.charset.Charset;
@@ -44,8 +45,8 @@ public class ClientHandler implements Runnable {
 	private String clientJwtString;
 	private String providedFileName;
 	
-	private final String serverDirectory = "C:/Users/Gibson/Desktop/hm3server/";
-	//private final String serverDirectory = "C:/Users/etis3/Desktop/hm3server/";
+//	private final String serverDirectory = "C:/Users/Gibson/Desktop/hm3server/";
+	private final String serverDirectory = "C:/Users/etis3/Desktop/hm3server/";
 	private final int okStatusCode = 200;
 	private final int fileNotFoundStatusCode = 404;
 
@@ -240,6 +241,8 @@ public class ClientHandler implements Runnable {
 				} catch (ClassNotFoundException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
+				} catch(StreamCorruptedException e) {
+					throw new IOException("File is too big to be transfered.");
 				}
 
 				

@@ -10,7 +10,8 @@ public class FileChangeListenerImpl extends UnicastRemoteObject implements FileC
 	private static final long serialVersionUID = -2818971064730477277L;
 	private String username;
 	private static final String TAG_DETAILS = "( ͡° ͜ʖ ͡°) ";
-	private static final String TAG_DOWNLOAD = "¯\\_(ツ)_/¯ ";
+	private static final String TAG_DOWNLOAD = "( ⚆ _ ⚆ ) ";
+	private static final String TAG_DELETE = "¯\\_(ツ)_/¯ ";
 	private static final String TAG_OVERWRITE = " (╯ಠ‿ಠ)╯ ";
 	
 
@@ -19,7 +20,12 @@ public class FileChangeListenerImpl extends UnicastRemoteObject implements FileC
 	}
 	
 	@Override
-	public void fileChanged(FileDTO file, String accessor, String action) throws RemoteException {
+	public void fileChanged(FileDTO file, String accessor, String action)  throws RemoteException {
+		this.fileChanged(file.getName(), accessor, action);
+	}
+	
+	@Override
+	public void fileChanged(String fileName, String accessor, String action) throws RemoteException {
 		String actionSentence;
 		String tag = TAG_DETAILS;
 		if (action != null) {
@@ -32,14 +38,18 @@ public class FileChangeListenerImpl extends UnicastRemoteObject implements FileC
 			} else if ("UPW".equalsIgnoreCase(action)) {
 				actionSentence = "overwrited your file ";
 				tag = TAG_OVERWRITE;
+			} else if ("DELETE".equalsIgnoreCase(action)) {
+				actionSentence = "deleted your file ";
+				tag = TAG_DELETE;
 			} else {
-				actionSentence = "did something but no idea what with the file ";
+				actionSentence = "did something unexpected with the file (error) ";
 			}
 			if (username.equalsIgnoreCase(accessor)) {
-				System.out.println(tag + "\n\t" + accessor + " (yourself)\n\t" + actionSentence + "\n\t'" + file.getName() +"'");
+				System.out.println(tag + "\n\t" + accessor + " (yourself)\n\t" + actionSentence + "\n\t'" + fileName +"'");
 			} else {
-				System.out.println(tag + "\n\t" + accessor + "\n\t" + actionSentence + "\n\t'" + file.getName() + "'");				
+				System.out.println(tag + "\n\t" + accessor + "\n\t" + actionSentence + "\n\t'" + fileName + "'");				
 			}
+			System.out.println("> ");
 		}
 	}
 	
