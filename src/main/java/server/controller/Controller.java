@@ -61,7 +61,7 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 				if (jwtString == null) {
 					throw new UserException("Unexpected error during authentication.");
 				}
-				threadLocalLoggedInUser.set(user);	// We remember the information about the successfully logged in user
+				threadLocalLoggedInUser.set(user); // We remember the information about the successfully logged in user
 				return jwtString;
 			}
 		} else {
@@ -83,7 +83,9 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	public FileDTO details(String jwtToken, String fileName) throws FileException, UserException {
 		requireAuthentication(jwtToken);
 		try {
-			return fc.findFileByFileName(fileName, true);
+			FileDTO file = fc.findFileByFileName(fileName, true);
+			notifyFileChangeListener(file, "DETAILS");
+			return file;
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new FileException("Could not retrieve the details of the file " + fileName + ".");
@@ -110,8 +112,6 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 			theFileAlreadyExists = false;
 		}
 
-		
-		
 		// Check if writable / owner
 		boolean overwrite = false;
 		try {
@@ -208,7 +208,6 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	 */
 	private void databaseUpload(String newName, boolean writePermission) throws UserException {
 		int size = newName.length();
-//		String url = "/fakeurl/" + newName;
 		String url = newName;
 		createFileMetaData(newName, size, url, writePermission);
 	}
@@ -219,8 +218,8 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	 * @param fileName
 	 * @param targetDirectory
 	 * @param newName
-	 * @throws UserException 
-	 * @throws FileException 
+	 * @throws UserException
+	 * @throws FileException
 	 */
 	private FileDTO fakeDownload(String userJwtToken, String fileName, String targetDirectory, String newName)
 			throws FileException, UserException {
@@ -231,12 +230,10 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 		return details(userJwtToken, fileName);
 	}
 
-
 	@Override
 	public void checkLogin(String jwtToken) throws RemoteException, UserException {
 		requireAuthentication(jwtToken);
 	}
-
 
 	/**
 	 * When a file is: - read with DETAILS command - downloaded with DOWN command -
@@ -296,14 +293,4 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	public void removeFileChangeListener(FileChangeListener fcl) throws RemoteException {
 		this.removeFileChangeListener(fcl);
 	}
-
-//	public static void verifyJWT(String userJwtToken) throws UserException{
-//		try {
-//
-//		}
-//		catch{
-//			
-//		}
-//	}
-
 }
