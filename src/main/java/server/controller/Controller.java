@@ -110,6 +110,8 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 			theFileAlreadyExists = false;
 		}
 
+		
+		
 		// Check if writable / owner
 		boolean overwrite = false;
 		try {
