@@ -8,12 +8,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.nio.charset.Charset;
-
 import common.TcpFile;
 
 public class TCPFileUpload implements Runnable{
@@ -91,7 +88,6 @@ public class TCPFileUpload implements Runnable{
 		ObjectOutputStream oos;
 		try {
 			oos = new ObjectOutputStream(baos);
-
 			oos.writeObject(objectToSerialize);
 			oos.flush();
 			oos.close();
