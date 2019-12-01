@@ -1,10 +1,18 @@
 package client.view;
 
 import java.rmi.RemoteException;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.CompletableFuture;
 
 import client.net.FileChangeListenerImpl;
+
+import client.net.TCPFileDownload;
+import client.net.TCPFileUpload;
+
 import common.FileCatalog;
 import common.FileChangeListener;
 import common.FileDTO;
@@ -21,7 +29,6 @@ public class NonBlockingInterpreter implements Runnable {
 	private static final String PROMPT = "> ";
 	private static final Scanner console = new Scanner(System.in);
 	private boolean receivingCommands = false;
-
 	private FileCatalog fileCatalog;
 	private String jwtToken;
 	
@@ -87,14 +94,16 @@ public class NonBlockingInterpreter implements Runnable {
 				case UPW:
 					String pathFileToUpload = commandHandler.getParam(1);
 					String newFileNameOnServer = commandHandler.getParam(2);
-					fileCatalog.upload(jwtToken, newFileNameOnServer, true);
+					new Thread(new TCPFileUpload(jwtToken, pathFileToUpload, newFileNameOnServer)).start();
 					// TODO
 					break;
 				case DOWN:
 					String fileNameToDL = commandHandler.getParam(1);
 					String targetDirectory = commandHandler.getParam(2);
 					String newNameDL = commandHandler.getParam(3);
-					fileCatalog.download(jwtToken, fileNameToDL, targetDirectory, newNameDL);
+					
+					new Thread(new TCPFileDownload(jwtToken, targetDirectory, fileNameToDL, newNameDL)).start();
+					//fileCatalog.download(jwtToken, fileNameToDL, targetDirectory, newNameDL);
 					// TODO
 					break;
 				case DELETE:

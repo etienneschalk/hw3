@@ -6,8 +6,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import org.eclipse.persistence.internal.databaseaccess.Accessor;
-
 import common.FileCatalog;
 import common.FileChangeListener;
 import common.FileDTO;
@@ -190,6 +188,7 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 		return details(userJwtToken, fileName);
 	}
 
+
 	@Override
 	public String waitForNotification(String jwtToken) {
 		while (notificationPresent == null || notificationPresent.get() == null || notificationPresent.get() == false) {
@@ -246,4 +245,14 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 			}
 		}
 	}
+
+	
+//	public static void verifyJWT(String userJwtToken) throws UserException{
+//		try {
+//
+//		}
+//		catch{
+//			
+//		}
+//	}
 }
