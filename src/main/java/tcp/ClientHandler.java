@@ -44,8 +44,8 @@ public class ClientHandler implements Runnable {
 	private String clientJwtString;
 	private String providedFileName;
 	
-//	private final String serverDirectory = "C:/Users/Gibson/Desktop/hm3server/";
-	private final String serverDirectory = "C:/Users/etis3/Desktop/hm3server/";
+	private final String serverDirectory = "C:/Users/Gibson/Desktop/hm3server/";
+	//private final String serverDirectory = "C:/Users/etis3/Desktop/hm3server/";
 	private final int okStatusCode = 200;
 	private final int fileNotFoundStatusCode = 404;
 
@@ -226,8 +226,6 @@ public class ClientHandler implements Runnable {
 			}
 			
 			if (totalReadBytes == messageLength) {
-				System.out.println(logCounter++ + "Hourray");
-
 				ByteArrayInputStream bais = new ByteArrayInputStream(serializedMessage);
 				ObjectInputStream ois = new ObjectInputStream(bais);
 				try {
@@ -237,9 +235,8 @@ public class ClientHandler implements Runnable {
 					bos = new BufferedOutputStream(fos);
 					
 					bos.write(clientMessage.getFileContents(), 0, clientMessage.getFileContents().length);
+					bos.flush();
 					
-					fos.close();
-					bos.close();
 				} catch (ClassNotFoundException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -258,6 +255,20 @@ public class ClientHandler implements Runnable {
 				try {
 					clientSocket.close();
 				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			if(fos != null)
+				try {
+					fos.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			if(bos != null)
+				try {
+					bos.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 		}

@@ -146,6 +146,7 @@ public class TCPFileDownload implements Runnable{
 						
 						bos.write(file.getFileContents(), 0, file.getFileContents().length);
 						System.out.println("File downloaded");
+						bos.flush();
 					}
 					else {
 						System.out.println("Requested File does not exist.");
