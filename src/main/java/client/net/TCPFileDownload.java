@@ -2,13 +2,21 @@ package client.net;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.nio.charset.Charset;
+
+import common.TcpFile;
+import common.TcpMessage;
 
 public class TCPFileDownload implements Runnable{
 	private static final int TIMEOUT_HALF_HOUR = 1800000;
@@ -16,18 +24,17 @@ public class TCPFileDownload implements Runnable{
     private Socket socket;
     
     private BufferedInputStream bis = null;
-    private OutputStream os = null;
-    private InputStream fromServer;
     private FileOutputStream fos;
+    private DataOutputStream toServer;
+    private DataInputStream fromServer;
     private BufferedOutputStream bos;
     private String jwtToket;
     private String pathToSaveFile;
     private String fileToDownload;
     private String newFilename;
 	private boolean connected = false;
-	private int bytesRead;
-    private int current = 0;
-	
+	private boolean autoFlush = true;
+
 	private static final String host = "localhost";
 	private static final int port = 5554;
 	
@@ -38,13 +45,21 @@ public class TCPFileDownload implements Runnable{
 		this.fileToDownload = fileToDownload;
 		this.newFilename = newFilename;
 		
-		// TODO Auto-generated method stub
-		try {
-			connect();
-			downloadFile();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		initDownload();
+	}
+	
+	private void initDownload() {
+		File file = new File(pathToSaveFile);
+		if(file.isDirectory()) {
+			try {
+				connect();
+				downloadFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		else {
+			System.out.println("Directory does not exist. Download aborted.");
 		}
 	}
 	
@@ -63,82 +78,110 @@ public class TCPFileDownload implements Runnable{
         socket.connect(new InetSocketAddress(host, port), TIMEOUT_HALF_MINUTE);
         socket.setSoTimeout(TIMEOUT_HALF_HOUR);
         connected = true;
+        toServer = new DataOutputStream(socket.getOutputStream());
+        fromServer = new DataInputStream(socket.getInputStream());
     }
     
+    
+    private byte[] getSerializedByteArray(Object objectToSerialize) {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		ObjectOutputStream oos;
+		try {
+			oos = new ObjectOutputStream(baos);
+
+			oos.writeObject(objectToSerialize);
+			oos.flush();
+			oos.close();
+
+			return baos.toByteArray();
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+    
     private void downloadFile() {
+    	TcpMessage message = new TcpMessage(fileToDownload);
+    	byte[] dataToSend = getSerializedByteArray(message);
     	try {
-			os = socket.getOutputStream();
-			byte[] requestString = fileToDownload.getBytes(Charset.forName("UTF-8"));
-			System.out.println(new String(requestString));
-			os.write(requestString,0,requestString.length);
-			os.flush();
+    		toServer.writeInt(dataToSend.length);
+    		toServer.writeChar('#');
+			toServer.write(dataToSend, 0, dataToSend.length);
+			
+			waitForServerResponse();
 			
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
     }
 
+    //here we wait for server response
+    private void waitForServerResponse() {
+    	int logCounter = 0;
+		System.out.println(logCounter++ + "Reading File Length");
+		int messageLength;
+		try {
+			messageLength = fromServer.readInt();
+			char sharp = fromServer.readChar(); 
+
+			byte[] serializedMessage = new byte[messageLength];
+
+			int actuallyReadBytes = 0;
+			int totalReadBytes = 0;
+
+			while (actuallyReadBytes != -1 && (totalReadBytes < messageLength - 1)) {
+				actuallyReadBytes = fromServer.read(serializedMessage, actuallyReadBytes,
+						messageLength - totalReadBytes);
+				totalReadBytes += actuallyReadBytes;
+			}
+			
+			if (totalReadBytes == messageLength) {
+				ByteArrayInputStream bais = new ByteArrayInputStream(serializedMessage);
+				ObjectInputStream ois = new ObjectInputStream(bais);
+				try {
+					TcpFile file = (TcpFile) ois.readObject();
+					
+					if(file.getResponseCode() == 200) {
+						fos = new FileOutputStream(pathToSaveFile + newFilename);
+						bos = new BufferedOutputStream(fos);
+						
+						bos.write(file.getFileContents(), 0, file.getFileContents().length);
+						System.out.println("File downloaded");
+					}
+					else {
+						System.out.println("Requested File does not exist.");
+					}
+				} catch (ClassNotFoundException e) {
+					e.printStackTrace();
+				}
+				finally {
+					if(bos != null) {
+						bos.close();
+					}
+					
+					if(fos != null) {
+						fos.close();
+					}
+				}
+			} else {
+				throw new IOException("Data received is not complete.");
+			}
+			
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+		} 
+		finally {
+			if(socket != null)
+				try {
+					socket.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+		}
+    }
+    
 	@Override
 	public void run() {
-//		while(connected) {
-//			try {
-//				fromServer = socket.getInputStream();
-//				
-//				byte[] byteArray  = new byte [6022386];
-//	            bytesRead = fromServer.read(byteArray,0,byteArray.length);
-//	            current = bytesRead;
-//	            
-//	            do {
-//	                bytesRead =
-//	                   fromServer.read(byteArray, current, (byteArray.length-current));
-//	                if(bytesRead >= 0) current += bytesRead;
-//	             } while(bytesRead > -1);
-//	            
-//	            if(byteArray.length > 0) {
-//	            	System.out.println("File received");
-//	            	
-//	            	String del = " ";
-//	                byte[] delimeterArray = del.getBytes(Charset.forName("UTF-8"));
-//	                byte delimeter = delimeterArray[0];
-//	                
-//	                byte[] serverResultByteArray = new byte[3];
-//	                
-//	                //extract server result..if error or not
-//	                int fileStartIndex = 0;
-//	                for(byte b : byteArray){
-//	                    if(fileStartIndex < 3) {
-//	                    	serverResultByteArray[fileStartIndex] = b;
-//	                    }
-//	                    fileStartIndex++;
-//	                }
-//	                
-//	                String serverResult = new String(serverResultByteArray);
-//	            	if(serverResult.equals("200")) {
-//	            		//file was found we read the result
-//	            		fos = new FileOutputStream(pathToSaveFile + newFilename);
-//	            		bos = new BufferedOutputStream(fos);
-//	            		
-//	            		bos.write(byteArray);
-//	            		bos.flush();
-//	            	}
-//	            	else if(serverResult.equals("404")){
-//	            		System.out.println("Error. Requested file not found on server.");
-//	            	}
-//	            	else {
-//	            		System.out.println("Unknown error occured.");
-//	            	}
-//	            	
-//	            	bos.close();
-//	            	fos.close();
-//	            	socket.close();
-//	            }
-//	            
-//			} catch (IOException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//			
-//		}
+		
 	}
 }
