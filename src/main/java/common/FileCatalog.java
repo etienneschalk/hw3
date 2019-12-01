@@ -29,6 +29,7 @@ public interface FileCatalog extends Remote {
 
 	 String waitForNotification(String jwtToken)throws RemoteException;
 	
+	 void checkLogin(String jwtToken) throws RemoteException, UserException;
 	// Observer registration
 	// The server is an "observable"
 	 void addFileChangeListener(FileChangeListener fcl) throws RemoteException;
