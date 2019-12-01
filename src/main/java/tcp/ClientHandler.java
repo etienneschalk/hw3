@@ -2,11 +2,19 @@ package tcp;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.net.Socket;
@@ -14,26 +22,30 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
+import common.TcpFile;
+import common.TcpMessage;
+
 public class ClientHandler implements Runnable {
 	private int id;
 	private FileServerUpload server;
 	private FileServerDownload downloadServer;
     private final Socket clientSocket;
     private boolean connected;
-    private InputStream fromClient;
-    private OutputStream toClient;
+    private DataInputStream fromClient;
+    private DataOutputStream toClient;
     private FileInputStream fis;
     private BufferedOutputStream bos;
     private BufferedInputStream bis;
     private FileOutputStream fos;
+    private BufferedReader br;
     private int bytesRead;
     private int current = 0;
     private String clientIntent;
 	private String clientJwtString;
 	private String providedFileName;
 	private final String serverDirectory = "C:/Users/Gibson/Desktop/hm3server/";
-	private final String okStatusCode = "200";
-	private final String fileNotFoundStatusCode = "404";
+	private final int okStatusCode = 200;
+	private final int fileNotFoundStatusCode = 404;
 
 	
 	public ClientHandler(FileServerUpload server, Socket clientSocket) {
@@ -49,6 +61,12 @@ public class ClientHandler implements Runnable {
 		this.clientSocket = clientSocket;
 		connected = true;
 		this.clientIntent = "download";
+		try {
+			br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		System.out.println("Client connected for file downloading");
 	}
 
@@ -57,6 +75,13 @@ public class ClientHandler implements Runnable {
      */
     @Override
     public void run() {
+    	try {
+			fromClient = new DataInputStream(clientSocket.getInputStream());
+			toClient = new DataOutputStream(clientSocket.getOutputStream());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+    	
         if(clientIntent == "download") {
         	sendFileToClient();
         }
@@ -67,171 +92,171 @@ public class ClientHandler implements Runnable {
     
     private void sendFileToClient() {
     	try {
-			fromClient = clientSocket.getInputStream();
-			
-			byte[] fileNamerByteArray  = new byte [1024];
-            bytesRead = fromClient.read(fileNamerByteArray,0,fileNamerByteArray.length);
-            current = bytesRead;
-            
-            System.out.println(bytesRead);
-            do {
-                bytesRead =
-                   fromClient.read(fileNamerByteArray, current, (fileNamerByteArray.length-current));
-                System.out.println(bytesRead);
-                if(bytesRead >= 0) current += bytesRead;
-             } while(bytesRead > -1);
-            
-            System.out.println(serverDirectory + new String(fileNamerByteArray));
-            File requestedFile = new File(serverDirectory + new String(fileNamerByteArray));
-            
-            if(requestedFile.exists() && !requestedFile.isDirectory()) {
-            	int fileSize = (int) requestedFile.length();
-            	byte[] fileByteArray = new byte[fileSize];
-            	byte[] okStatusByteArray = okStatusCode.getBytes();
-            	
-            	
-            	fis = new FileInputStream(requestedFile);
-            	bis = new BufferedInputStream(fis);
+    		int logCounter = 0;
+    		System.out.println(logCounter++ + "Reading Client Download Request");
+    		int messageLength;
+    		messageLength = fromClient.readInt();
+			char sharp = fromClient.readChar(); // delimiter ( '#' ) // 1 byte
 
-            	bis.read(fileByteArray,0,fileByteArray.length);
+    		int actuallyReadBytes = 0;
+			int totalReadBytes = 0;
+			byte[] serializedMessage = new byte[messageLength];
+
+			while (actuallyReadBytes != -1 && (totalReadBytes < messageLength - 1)) {
+				actuallyReadBytes = fromClient.read(serializedMessage, actuallyReadBytes,
+						messageLength - totalReadBytes);
+				totalReadBytes += actuallyReadBytes;
+			}
+			
+			if (totalReadBytes == messageLength) {
+				ByteArrayInputStream bais = new ByteArrayInputStream(serializedMessage);
+				ObjectInputStream ois = new ObjectInputStream(bais);
 				
-            	byte[] byteArrayToSend = new byte[okStatusByteArray.length + fileByteArray.length];
-				System.arraycopy(okStatusByteArray, 0, byteArrayToSend, 0, okStatusByteArray.length);
-				System.arraycopy(fileByteArray, 0, byteArrayToSend, okStatusByteArray.length, fileByteArray.length);
+				try {
+					TcpMessage message = (TcpMessage)ois.readObject();
+					String filename = message.getMessage();
+		            String fullFilePath = serverDirectory + filename;
+		        
+		            File requestedFile = new File(fullFilePath);
+		            
+		            System.out.println(fullFilePath);
+		            System.out.println(requestedFile.isDirectory());
+		            System.out.println(requestedFile.exists());
+		            
+		            if(!requestedFile.isDirectory() && requestedFile.exists()) {
+		            	fis = new FileInputStream(requestedFile);
+		            	int fileSize = (int) requestedFile.length();
+		            	TcpFile tcpFile = new TcpFile();
+		    			tcpFile.setFileSize(fileSize);
+		    			tcpFile.setResponseCode(okStatusCode);
+		    			
+		    			byte [] fileByteArray  = new byte [fileSize];
+		    			
+		    			bis = new BufferedInputStream(fis);
+		    			try {
+		    				bis.read(fileByteArray,0,fileByteArray.length);
+		    				
+		    				tcpFile.setFileContents(fileByteArray);
+
+		    				byte[] dataToSend = getSerializedByteArray(tcpFile);
+		    				toClient.writeInt(dataToSend.length);
+		    				toClient.writeChar('#');
+		    				toClient.write(dataToSend,0,dataToSend.length);
+		    				toClient.flush();
+		    			} catch (IOException e) {
+		    				e.printStackTrace();
+		    			}
+		    			finally {
+		    				if(fis != null)
+		    					fis.close();
+		    				if(bis != null)
+		    					bis.close();
+		    			}
+		            }
+		            else {
+		            	TcpFile tcpFile = new TcpFile();
+		            	tcpFile.setResponseCode(fileNotFoundStatusCode);
+		            	byte[] dataToSend = getSerializedByteArray(tcpFile);
+		            	
+	    				toClient.writeInt(dataToSend.length);
+	    				toClient.writeChar('#');
+	    				toClient.write(dataToSend,0,dataToSend.length);
+	    				toClient.flush();
+		            }
+				} catch (ClassNotFoundException e) {
+					e.printStackTrace();
+				}
 				
-				System.out.println(new String(byteArrayToSend));
-				toClient = clientSocket.getOutputStream();
-				toClient.write(byteArrayToSend,0,byteArrayToSend.length);
-				toClient.flush();
-            }
-            else {
-            	
-            	byte[] notFoundStatusCode = fileNotFoundStatusCode.getBytes();
-            	toClient = clientSocket.getOutputStream();
-				toClient.write(notFoundStatusCode,0,notFoundStatusCode.length);
-				toClient.flush();
-            }
+			}
            
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+		}  	
     	finally {
-    		try {
-				clientSocket.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-    		
-    		try {
-				bis.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-    		
-    		try {
-				fis.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+    		if(clientSocket != null) {
+    			try {
+					clientSocket.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+    		}
     	}
-    	
     }
     
+    private byte[] getSerializedByteArray(Object objectToSerialize) {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		ObjectOutputStream oos;
+		try {
+			oos = new ObjectOutputStream(baos);
+
+			oos.writeObject(objectToSerialize);
+			oos.flush();
+			oos.close();
+
+			return baos.toByteArray();
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+    
+    
     private void receiveFileFromClient() {
-    	try {
-            fromClient = clientSocket.getInputStream();
+    	int logCounter = 0;
+		System.out.println(logCounter++ + "Reading File Length");
+		int messageLength;
+		try {
+			messageLength = fromClient.readInt();
+			char sharp = fromClient.readChar(); // delimiter ( '#' ) // 1 byte
 
-            List<Byte> jwtStringByteList = new ArrayList<Byte>();
-            List<Byte> fileNameByteList = new ArrayList<Byte>();
-            
-            byte[] fileByteArray  = new byte [6022386];
-            bytesRead = fromClient.read(fileByteArray,0,fileByteArray.length);
-            current = bytesRead;
-             
-            do {
-                bytesRead =
-                   fromClient.read(fileByteArray, current, (fileByteArray.length-current));
-                if(bytesRead >= 0) current += bytesRead;
-             } while(bytesRead > -1);
-            
+			System.out.println(logCounter++ + messageLength + sharp);
+			System.out.println(logCounter++ + "Tries to read {messageLength} from Data Input Stream...");
 
-            String del = " ";
-            byte[] delimeterArray = del.getBytes(Charset.forName("UTF-8"));
-            byte delimeter = delimeterArray[0];
-            //extract filename and jwt from the byte array received
-            int fileStartIndex = 0;
-            
-            int jwtIndexEnd = 0;
-            for(int i = 0; i < fileByteArray.length; i++) {
-            	byte b = fileByteArray[i];
-            	if(b == delimeter) {
-            		jwtIndexEnd = i + 1;
-            		break;
-            	}
-            	jwtStringByteList.add(b);
-            }
-            
-      
-            for(int i = jwtIndexEnd; i < fileByteArray.length; i++) {
-            	byte b = fileByteArray[i];
-            	if(b == delimeter) {
-            		fileStartIndex = i + 1;
-            		break;
-            	}
-            	fileNameByteList.add(b);
-            }
+			byte[] serializedMessage = new byte[messageLength];
 
-          //convert list of bytes of jwt to byte array
-            byte[] jwtArray = new byte[jwtStringByteList.size()];
-            for (int index = 0; index < jwtStringByteList.size(); index++) {
-            	jwtArray[index] = jwtStringByteList.get(index);
-            }
-            
-            //convert list of bytes of file name to byte array
-            byte[] fileNameArray = new byte[fileNameByteList.size()];
-            for (int index = 0; index < fileNameByteList.size(); index++) {
-            	fileNameArray[index] = fileNameByteList.get(index);
-            }
-            
-            //convert byte arrays to strings
-            clientJwtString = new String(jwtArray);
-            providedFileName = new String(fileNameArray);
-            //directory
-            fos = new FileOutputStream(serverDirectory  + providedFileName);
-            bos = new BufferedOutputStream(fos);
-            
-            bos.write(fileByteArray, fileStartIndex , current);
-            bos.flush();
-            
-            System.out.println("File uploaded");
-        } catch (IOException ioe) {
-            throw new UncheckedIOException(ioe);
-        }
-        finally {
-        	try {
-				clientSocket.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			int actuallyReadBytes = 0;
+			int totalReadBytes = 0;
+
+			while (actuallyReadBytes != -1 && (totalReadBytes < messageLength - 1)) {
+				actuallyReadBytes = fromClient.read(serializedMessage, actuallyReadBytes,
+						messageLength - totalReadBytes);
+				totalReadBytes += actuallyReadBytes;
 			}
-        	
-        	try {
-				fos.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			
+			if (totalReadBytes == messageLength) {
+				System.out.println(logCounter++ + "Hourray");
+
+				ByteArrayInputStream bais = new ByteArrayInputStream(serializedMessage);
+				ObjectInputStream ois = new ObjectInputStream(bais);
+				try {
+					TcpFile clientMessage = (TcpFile) ois.readObject();
+					
+					fos = new FileOutputStream(serverDirectory + clientMessage.getFilename());
+					bos = new BufferedOutputStream(fos);
+					
+					bos.write(clientMessage.getFileContents(), 0, clientMessage.getFileContents().length);
+					
+					fos.close();
+					bos.close();
+				} catch (ClassNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+				
+			} else {
+				throw new IOException("Data received is not complete.");
 			}
-        	
-        	try {
-				bos.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-        }    	
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		} 
+		finally {
+			if(clientSocket != null)
+				try {
+					clientSocket.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+		}
     }
 }
