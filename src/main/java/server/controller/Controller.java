@@ -56,12 +56,14 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 			else {
 				// Successful connection
 				// TODO handle the connection ( JWT ? )
-				authenticationService.createJWTString();
+//				authenticationService.createJWTString();
+				authenticationService.createJWTString(user.getName());
 				String jwtString = authenticationService.getJwtString();
 				if (jwtString == null) {
 					throw new UserException("Unexpected error during authentication.");
 				}
 				threadLocalLoggedInUser.set(user); // We remember the information about the successfully logged in user
+//				fc.setLoggedInUser(user);
 				return jwtString;
 			}
 		} else {
@@ -178,12 +180,22 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 			throw new UserException("Authentication service has problems.");
 		}
 		String jwtStringServer = authenticationService.getJwtString();
+		
 		if (jwtStringServer == null) {
 			throw new UserException("Server does not remember you.");
 		}
-		if (!jwtStringServer.equals(userJwtToken)) {
-			throw new UserException("Invalid token.");
-		}
+//		if (!jwtStringServer.equals(userJwtToken)) {
+//			throw new UserException("Invalid token.");
+//		}
+		
+		String username = authenticationService.getUsername(userJwtToken);
+		
+		System.out.println("[JWT valid: " + authenticationService.isValidJWT(userJwtToken) + "]" );
+		System.out.println("[JWT] username: " + username);
+		
+		// Set the current local user
+		// We check the db each time
+		this.threadLocalLoggedInUser.set(fc.findUserByName(username, true));
 	}
 
 	/**
@@ -285,6 +297,7 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 		return loggedInUser;
 	}
 
+	
 	@Override
 	public void addFileChangeListener(FileChangeListener fcl) throws RemoteException {
 		this.fileChangeListeners.add(fcl);
