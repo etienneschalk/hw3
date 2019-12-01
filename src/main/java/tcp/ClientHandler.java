@@ -44,8 +44,8 @@ public class ClientHandler implements Runnable {
 	private String clientJwtString;
 	private String providedFileName;
 	
-	private final String serverDirectory = "C:/Users/Gibson/Desktop/hm3server/";
-//	private final String serverDirectory = "C:/Users/etis3/Desktop/hm3server/";
+//	private final String serverDirectory = "C:/Users/Gibson/Desktop/hm3server/";
+	private final String serverDirectory = "C:/Users/etis3/Desktop/hm3server/";
 	private final int okStatusCode = 200;
 	private final int fileNotFoundStatusCode = 404;
 
