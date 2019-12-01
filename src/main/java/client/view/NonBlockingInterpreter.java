@@ -2,13 +2,16 @@ package client.view;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.rmi.RemoteException;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
 
+import client.net.FileChangeListenerImpl;
 import client.net.TCPFileDownload;
 import client.net.TCPFileUpload;
 import common.FileCatalog;
+import common.FileChangeListener;
 import common.FileDTO;
 import server.model.FileException;
 import server.model.UserException;
@@ -27,6 +30,8 @@ public class NonBlockingInterpreter implements Runnable {
 	private boolean receivingCommands = false;
 	private FileCatalog fileCatalog;
 	private String jwtToken;
+
+	private FileChangeListener fileChangeListener;
 
 	/**
 	 * Starts the interpreter, if not starting yet.
@@ -60,6 +65,15 @@ public class NonBlockingInterpreter implements Runnable {
 					String username1 = commandHandler.getParam(1);
 					String password1 = commandHandler.getParam(2);
 					jwtToken = fileCatalog.login(username1, password1);
+
+					try {
+						this.fileChangeListener = new FileChangeListenerImpl(username1);
+						fileCatalog.addFileChangeListener(this.fileChangeListener);
+					} catch (RemoteException e) {
+						niceErrorPrint(e);
+						return;
+					}
+
 					break;
 				case LIST:
 					List<? extends FileDTO> files = fileCatalog.list(jwtToken);
@@ -76,16 +90,21 @@ public class NonBlockingInterpreter implements Runnable {
 					String pathFileToUploadReadOnly = commandHandler.getParam(1);
 					String newFileNameOnServerReadOnly = commandHandler.getParam(2);
 					if (newFileNameOnServerReadOnly == null || "".equals(newFileNameOnServerReadOnly)) {
-						newFileNameOnServerReadOnly = pathFileToUploadReadOnly.substring(pathFileToUploadReadOnly.lastIndexOf('/') + 1);
+						newFileNameOnServerReadOnly = pathFileToUploadReadOnly
+								.substring(pathFileToUploadReadOnly.lastIndexOf('/') + 1);
 					}
-					new Thread(new TCPFileUpload(jwtToken, pathFileToUploadReadOnly, newFileNameOnServerReadOnly)).start();
-				
+					new Thread(new TCPFileUpload(jwtToken, pathFileToUploadReadOnly, newFileNameOnServerReadOnly))
+							.start();
+
 					fileCatalog.upload(jwtToken, newFileNameOnServerReadOnly, false);
 //					fileCatalog.checkLogin(jwtToken);
 					break;
 				case UPW:
 					String pathFileToUpload = commandHandler.getParam(1);
 					String newFileNameOnServer = commandHandler.getParam(2);
+					if (newFileNameOnServer == null || "".equals(newFileNameOnServer)) {
+						newFileNameOnServerReadOnly = pathFileToUpload.substring(pathFileToUpload.lastIndexOf('/') + 1);
+					}
 					fileCatalog.checkLogin(jwtToken);
 					new Thread(new TCPFileUpload(jwtToken, pathFileToUpload, newFileNameOnServer)).start();
 					fileCatalog.upload(jwtToken, newFileNameOnServer, true);
@@ -95,10 +114,10 @@ public class NonBlockingInterpreter implements Runnable {
 					String fileNameToDL = commandHandler.getParam(1);
 					String targetDirectory = commandHandler.getParam(2);
 					String newNameDL = commandHandler.getParam(3);
-	
+
 					// Don't forget to put a slash at the end
 					new Thread(new TCPFileDownload(jwtToken, targetDirectory, fileNameToDL, newNameDL)).start();
-					
+
 					fileCatalog.download(jwtToken, fileNameToDL, targetDirectory, newNameDL);
 
 //					fileCatalog.checkLogin(jwtToken);
@@ -111,9 +130,15 @@ public class NonBlockingInterpreter implements Runnable {
 					break;
 				case LOGOUT:
 					jwtToken = null;
+					fileCatalog.removeFileChangeListener(this.fileChangeListener);
 					safePrintln("You have been logged out.");
+					receivingCommands = false;
+					safePrintln("Good bye!");
 					break;
 				case QUIT:
+					jwtToken = null;
+					fileCatalog.removeFileChangeListener(this.fileChangeListener);
+					safePrintln("You have been logged out.");
 					receivingCommands = false;
 					safePrintln("Good bye!");
 					break;
@@ -164,8 +189,19 @@ public class NonBlockingInterpreter implements Runnable {
 		if (file == null) {
 			safePrintln("The file could not be retrieved or does not exist!");
 		} else {
-			safePrintln(file.getName() + "|" + file.getPermission() + "|" + file.getSize().toString() + " - "
-					+ file.getOwnerName());
+			safePrintln("[ " + file.getPermission() + " ] " + file.getSize().toString() + " \t" 
+							+ normalizeFileNameString(file.getName(), 16));
+		}
+	}
+
+	private String normalizeFileNameString(String fileName, int newSize) {
+		int currentStringSize = fileName.length();
+		if (currentStringSize > newSize) {
+			String truncatedString = fileName.substring(0, newSize - 3);
+			return truncatedString + "...";
+		} else {
+			String whiteSpaces = " ".repeat(newSize - currentStringSize);
+			return fileName + whiteSpaces;
 		}
 	}
 
