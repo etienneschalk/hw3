@@ -23,7 +23,6 @@ public class TCPFileDownload implements Runnable{
     private static final int TIMEOUT_HALF_MINUTE = 30000;
     private Socket socket;
     
-    private BufferedInputStream bis = null;
     private FileOutputStream fos;
     private DataOutputStream toServer;
     private DataInputStream fromServer;
