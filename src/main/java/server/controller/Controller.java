@@ -2,9 +2,10 @@ package server.controller;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import javax.persistence.EntityManager;
 
 import common.FileCatalog;
 import common.FileChangeListener;
@@ -29,14 +30,12 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	private FileCatalogDAO fc;
 	private AuthenticationService authenticationService;
 	private final ThreadLocal<User> threadLocalLoggedInUser = new ThreadLocal<>();
-	private final ThreadLocal<Boolean> notificationPresent = new ThreadLocal<>();
-	private List<FileChangeListener> fileChangeListeners = new ArrayList<>();
+	private List<FileChangeListener> fileChangeListeners;
 
 	public Controller() throws RemoteException {
 		super();
 		fc = new FileCatalogDAO();
 		authenticationService = new AuthenticationServiceImpl();
-		notificationPresent.set(false);
 	}
 
 	@Override
@@ -62,7 +61,7 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 				if (jwtString == null) {
 					throw new UserException("Unexpected error during authentication.");
 				}
-				threadLocalLoggedInUser.set(user); // We remember the information about the successfully logged in user
+				threadLocalLoggedInUser.set(user);	// We remember the information about the successfully logged in user
 				return jwtString;
 			}
 		} else {
@@ -84,9 +83,7 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	public FileDTO details(String jwtToken, String fileName) throws FileException, UserException {
 		requireAuthentication(jwtToken);
 		try {
-			FileDTO file = fc.findFileByFileName(fileName, true);
-			notifyFileChangeListener(file, "DETAILS");
-			return file;
+			return fc.findFileByFileName(fileName, true);
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new FileException("Could not retrieve the details of the file " + fileName + ".");
@@ -220,8 +217,8 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 	 * @param fileName
 	 * @param targetDirectory
 	 * @param newName
-	 * @throws UserException
-	 * @throws FileException
+	 * @throws UserException 
+	 * @throws FileException 
 	 */
 	private FileDTO fakeDownload(String userJwtToken, String fileName, String targetDirectory, String newName)
 			throws FileException, UserException {
@@ -232,24 +229,12 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 		return details(userJwtToken, fileName);
 	}
 
-	@Override
-	public String waitForNotification(String jwtToken) {
-		while (notificationPresent == null || notificationPresent.get() == null || notificationPresent.get() == false) {
-			System.out.println("nope");
-		}
-		notificationPresent.set(false);
-		return "Heyheyhey";
-	}
 
 	@Override
-	public void addFileChangeListener(FileChangeListener fcl) throws RemoteException {
-		fileChangeListeners.add(fcl);
+	public void checkLogin(String jwtToken) throws RemoteException, UserException {
+		requireAuthentication(jwtToken);
 	}
 
-	@Override
-	public void removeFileChangeListener(FileChangeListener fcl) throws RemoteException {
-		fileChangeListeners.remove(fcl);
-	}
 
 	/**
 	 * When a file is: - read with DETAILS command - downloaded with DOWN command -
@@ -300,6 +285,16 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 		return loggedInUser;
 	}
 
+	@Override
+	public void addFileChangeListener(FileChangeListener fcl) throws RemoteException {
+		this.addFileChangeListener(fcl);
+	}
+
+	@Override
+	public void removeFileChangeListener(FileChangeListener fcl) throws RemoteException {
+		this.removeFileChangeListener(fcl);
+	}
+
 //	public static void verifyJWT(String userJwtToken) throws UserException{
 //		try {
 //
@@ -308,4 +303,5 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 //			
 //		}
 //	}
+
 }
