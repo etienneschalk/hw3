@@ -19,9 +19,9 @@ list
 details 	serverFileName
 upr 		pathToFile 		newName
 upw 		pathToFile 		newName
-down 		serverFileName 	pathToWantedFolder 	downloadedFileName
+down 		serverFileName 	 	downloadedFileName    [pathToWantedFolder]
 delete 		serverFileName
-logout (similar to quit)
+logout 
 quit
 help
 

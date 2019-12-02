@@ -23,13 +23,21 @@ import server.model.UserException;
  *
  */
 public class NonBlockingInterpreter implements Runnable {
+	private static final String  desktopPath = System.getProperty("user.home") + "/Desktop";
+	private static final String  defaultClientFolder = desktopPath + "/hm3client/";
+	private static final String  defaultClientDownloadsFolder = desktopPath + "/hm3client/DOWNLOADS/";
+	private static final String  defaultServerFolder = desktopPath + "/hm3server/";
+	private static final String  nobodyUser = "[ ]";
+	
 	private static final String PROMPT = "> ";
 	private static final Scanner console = new Scanner(System.in);
 	private boolean receivingCommands = false;
 	private FileCatalog fileCatalog;
 	private String jwtToken;
+	private String loggedInUser = nobodyUser;
 
 	private FileChangeListener fileChangeListener;
+	
 
 	/**
 	 * Starts the interpreter, if not starting yet.
@@ -60,12 +68,15 @@ public class NonBlockingInterpreter implements Runnable {
 					fileCatalog.register(username, password);
 					break;
 				case LOGIN:
+					
 					String username1 = commandHandler.getParam(1);
 					String password1 = commandHandler.getParam(2);
+					cleanAfterLogout();
 					jwtToken = fileCatalog.login(username1, password1);
 					try {
 						this.fileChangeListener = new FileChangeListenerImpl(username1);
 						fileCatalog.addFileChangeListener(this.fileChangeListener);
+						loggedInUser = username1;
 					} catch (RemoteException e) {
 						niceErrorPrint(e);
 						return;	
@@ -83,7 +94,7 @@ public class NonBlockingInterpreter implements Runnable {
 					printDetails(file);
 					break;
 				case UPR:
-					String pathFileToUploadReadOnly = commandHandler.getParam(1);
+					String pathFileToUploadReadOnly = defaultClientFolder + commandHandler.getParam(1);
 					String newFileNameOnServerReadOnly = commandHandler.getParam(2);
 					uploadHandler(pathFileToUploadReadOnly, newFileNameOnServerReadOnly, false);
 //					if (newFileNameOnServerReadOnly == null || "".equals(newFileNameOnServerReadOnly)) {
@@ -97,29 +108,30 @@ public class NonBlockingInterpreter implements Runnable {
 ////					fileCatalog.checkLogin(jwtToken);
 					break;
 				case UPW:
-					String pathFileToUpload = commandHandler.getParam(1);
+					String pathFileToUpload = defaultClientFolder + commandHandler.getParam(1);
 					String newFileNameOnServer = commandHandler.getParam(2);
 					uploadHandler(pathFileToUpload, newFileNameOnServer, true);
-//					if (newFileNameOnServer == null || "".equals(newFileNameOnServer)) {
-//						newFileNameOnServerReadOnly = pathFileToUpload.substring(pathFileToUpload.lastIndexOf('/') + 1);
-//					}
-//					fileCatalog.checkLogin(jwtToken);
-//					new Thread(new TCPFileUpload(jwtToken, pathFileToUpload, newFileNameOnServer)).start();
-//					fileCatalog.upload(jwtToken, newFileNameOnServer, true);
-
 					break;
 				case DOWN:
 					String fileNameToDL = commandHandler.getParam(1);
-					String targetDirectory = commandHandler.getParam(2);
-					String newNameDL = commandHandler.getParam(3);
+					String newNameDL = commandHandler.getParam(2);
+					String targetDirectory = commandHandler.getParam(3);
+					
+					// If we do not provide a path, we use the default folder
+					if (targetDirectory == null || "".equals(targetDirectory) ) {
+						targetDirectory = defaultClientDownloadsFolder;
+					}
+					
+					if (newNameDL == null || "".contentEquals(newNameDL)) {
+						newNameDL = fileNameToDL;
+					}
 
 					// Don't forget to put a slash at the end
 					new Thread(new TCPFileDownload(jwtToken, targetDirectory, fileNameToDL, newNameDL)).start();
 
-					fileCatalog.download(jwtToken, fileNameToDL, targetDirectory, newNameDL);
-
-//					fileCatalog.checkLogin(jwtToken);
-
+					FileDTO filefile = fileCatalog.download(jwtToken, fileNameToDL, targetDirectory, newNameDL);
+					safePrintln("(target directory:\n" + targetDirectory + ")");
+					printDetails(filefile);
 					break;
 				case DELETE:
 					String fileNameToDelete = commandHandler.getParam(1);
@@ -127,26 +139,33 @@ public class NonBlockingInterpreter implements Runnable {
 					// TODO
 					break;
 				case LOGOUT:
-					jwtToken = null;
-					fileCatalog.removeFileChangeListener(this.fileChangeListener);
+					cleanAfterLogout();
 					safePrintln("You have been logged out.");
-					receivingCommands = false;
-					safePrintln("Good bye!");
 					break;
 				case QUIT:
-					jwtToken = null;
-					fileCatalog.removeFileChangeListener(this.fileChangeListener);
+					cleanAfterLogout();
 					safePrintln("You have been logged out.");
 					receivingCommands = false;
 					safePrintln("Good bye!");
 					break;
 				case HELP:
-					for (Command command : Command.values()) {
-						if (command == Command.UNKNOWN) {
-							continue;
-						}
-						safePrintln(command.toString().toLowerCase());
-					}
+//					for (Command command : Command.values()) {
+//						if (command == Command.UNKNOWN) {
+//							continue;
+//						}
+//						safePrintln(command.toString().toLowerCase());
+//					}
+					System.out.println("register 	username 		password\r\n" + 
+							"login 		username 		password\r\n" + 
+							"list \r\n" + 
+							"details 	serverFileName\r\n" + 
+							"upr 		pathToFile 		newName\r\n" + 
+							"upw 		pathToFile 		newName\r\n" + 
+							"down 		serverFileName 	 	downloadedFileName    [pathToWantedFolder]\r\n" + 
+							"delete 		serverFileName\r\n" + 
+							"logout\r\n" + 
+							"quit\r\n" + 
+							"help");
 					break;
 				default:
 					safePrintln("Unrecognized command.");
@@ -159,7 +178,7 @@ public class NonBlockingInterpreter implements Runnable {
 	}
 
 	private String readNextLine() {
-		safePrint(PROMPT);
+		safePrint(loggedInUser+PROMPT);
 		return console.nextLine();
 	}
 
@@ -178,15 +197,15 @@ public class NonBlockingInterpreter implements Runnable {
 	private void niceErrorPrint(Exception e) {
 		if (e.getClass().equals(FileException.class)) {
 			safePrintln("[File Error]");
-			safePrintln("\nDetails: " + e.getMessage());
+			safePrintln("  Details: \n  " + e.getMessage());
 		}else if (e.getClass().equals(UserException.class)) {
 			safePrintln("[User Error]");
-			safePrintln("\nDetails: " + e.getMessage());
+			safePrintln("  Details: \n  " + e.getMessage());
 		}
 		else {
 			safePrintln("[" + e.getClass().getName() + "]");
-			safePrintln("\tMessage: " + e.getMessage());
-			safePrintln("\tCause: " + e.getCause());
+			safePrintln("  Message: " + e.getMessage());
+			safePrintln("  Cause: " + e.getCause());
 		}
 	}
 
@@ -197,7 +216,7 @@ public class NonBlockingInterpreter implements Runnable {
 			safePrintln("The file could not be retrieved or does not exist!");
 		} else {
 			safePrintln("[ " + file.getPermission() + " ] " + file.getSize().toString() + " \t"
-					+ normalizeFileNameString(file.getName(), 16) + "\t" + file.getOwnerName());
+					+ normalizeFileNameString(file.getName(), 20) + "\t" + file.getOwnerName());
 		}
 	}
 
@@ -215,10 +234,20 @@ public class NonBlockingInterpreter implements Runnable {
 	private void uploadHandler(String pathFileToUpload, String newFileNameOnServer, boolean writePermission) throws RemoteException, FileException, UserException {
 		if (newFileNameOnServer == null || "".equals(newFileNameOnServer)) {
 			newFileNameOnServer = pathFileToUpload.substring(pathFileToUpload.lastIndexOf('/') + 1);
+//			newFileNameOnServer = pathFileToUpload;
 		}
 		TCPFileUpload uploadWritableFile = new TCPFileUpload(jwtToken, pathFileToUpload, newFileNameOnServer);
 		int fileLength = uploadWritableFile.getActualFileLentgth();
+		if (fileLength == 0) {
+			throw new FileException("The file could not be transferred.");
+		}
 		fileCatalog.upload(jwtToken, newFileNameOnServer, writePermission, fileLength);
+	}
+	
+	private void cleanAfterLogout() throws RemoteException {
+		jwtToken = null;
+		loggedInUser = nobodyUser;
+		fileCatalog.removeFileChangeListener(this.fileChangeListener);
 	}
 
 }

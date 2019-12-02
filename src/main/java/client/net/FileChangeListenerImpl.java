@@ -10,7 +10,8 @@ public class FileChangeListenerImpl extends UnicastRemoteObject implements FileC
 	private static final long serialVersionUID = -2818971064730477277L;
 	private String username;
 	private static final String TAG_DETAILS = "( ͡° ͜ʖ ͡°) ";
-	private static final String TAG_DOWNLOAD = "( ⚆ _ ⚆ ) ";
+//	private static final String TAG_DOWNLOAD = "( ⚆ _ ⚆ ) ";
+	private static final String TAG_DOWNLOAD = " ༼ つ ◕_◕ ༽つ   ";
 	private static final String TAG_DELETE = "¯\\_(ツ)_/¯ ";
 	private static final String TAG_OVERWRITE = " (╯ಠ‿ಠ)╯ ";
 	
@@ -45,11 +46,11 @@ public class FileChangeListenerImpl extends UnicastRemoteObject implements FileC
 				actionSentence = "did something unexpected with the file (error) ";
 			}
 			if (username.equalsIgnoreCase(accessor)) {
-				System.out.println(tag + "\n\t" + accessor + " (yourself)\n\t" + actionSentence + "\n\t'" + fileName +"'");
+				System.out.println("\n" + tag + "  " + accessor + " (yourself)\n\t" + actionSentence + "\n\t'" + fileName +"'");
 			} else {
-				System.out.println(tag + "\n\t" + accessor + "\n\t" + actionSentence + "\n\t'" + fileName + "'");				
+				System.out.println("\n" + tag + "  " + accessor + "\n\t" + actionSentence + "\n\t'" + fileName + "'");				
 			}
-			System.out.println("> ");
+			System.out.print(username+"> ");
 		}
 	}
 	

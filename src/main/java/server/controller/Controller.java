@@ -184,6 +184,9 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 		if (jwtStringServer == null) {
 			throw new UserException("Server does not remember you.");
 		}
+		if (userJwtToken == null) {
+			throw new UserException("Please login before using the file catalog!");
+		}
 //		if (!jwtStringServer.equals(userJwtToken)) {
 //			throw new UserException("Invalid token.");
 //		}
@@ -270,7 +273,8 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 			return;
 		}
 		String listenerUsername;
-
+		
+		System.out.println("Before updating the listeners...");
 		Iterator<FileChangeListener> iteratorFcl = this.fileChangeListeners.iterator();
 		synchronized (iteratorFcl) {
 			FileChangeListener fcl;
@@ -278,14 +282,18 @@ public class Controller extends UnicastRemoteObject implements FileCatalog {
 				fcl = iteratorFcl.next();
 				try {
 					listenerUsername = fcl.getUsername();
+					System.out.print("\t"+listenerUsername);
 					if (listenerUsername.equals(owner)) {
 						fcl.fileChanged(file, accessor, action);
+						System.out.print(" - " + file.getName() + " - " + accessor + " - " + action);
 					}
+					System.out.println();
 				} catch (RemoteException e) {
 					fileChangeListeners.remove(fcl);
 				}
 			}
 		}
+		System.out.println("Updating the listeners is finished.");
 	}
 
 	public User checkAndGetAndRefreshUser() throws UserException {

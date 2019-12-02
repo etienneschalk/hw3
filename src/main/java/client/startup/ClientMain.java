@@ -14,6 +14,8 @@ public class ClientMain {
 	public static void main(String[] argv) {
 		try {
 			System.out.println("Home Folder: " + System.getProperty("user.home"));
+			System.out.println("Welcome to the File Catalog client!");
+			System.out.println("Type help for the list of availables commands.");
 			new NonBlockingInterpreter().start((FileCatalog) Naming.lookup(FileCatalog.FILE_CATALOG_NAME_IN_REGISTRY));
 			
 		} catch (NotBoundException e) {

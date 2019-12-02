@@ -112,7 +112,7 @@ public class TCPFileDownload implements Runnable {
 	// here we wait for server response
 	private void waitForServerResponse() {
 		int logCounter = 0;
-		System.out.println(logCounter++ + "Reading File Length");
+		System.out.println("Reading File Length...");
 		int messageLength;
 		try {
 			messageLength = fromServer.readInt();
@@ -140,7 +140,7 @@ public class TCPFileDownload implements Runnable {
 						bos = new BufferedOutputStream(fos);
 
 						bos.write(file.getFileContents(), 0, file.getFileContents().length);
-						System.out.println("File downloaded");
+						System.out.println("File downloaded.");
 						bos.flush();
 					} else {
 						System.out.println("Requested File does not exist.");
